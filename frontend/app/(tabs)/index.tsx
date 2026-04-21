@@ -7,31 +7,18 @@ import {
   SafeAreaView,
   TouchableOpacity,
   ActivityIndicator,
+  Image,
 } from "react-native";
-import {
-  Flame,
-  Plus,
-  Sun,
-  Cloud,
-  Moon,
-  CloudSun,
-  User,
-} from "lucide-react-native";
+import { Flame, Plus } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Colors, Fonts } from "@/src/theme/colors";
-import Card from "@/src/components/Card";
-import TaskItem from "@/src/components/TaskItem";
 import GoalModal from "@/src/components/GoalModal";
-import { storage } from "@/src/utils/storage";
-import EmptyState from "@/src/components/EmptyState";
-import { useFocusEffect } from "@react-navigation/native";
 import ProgressRing from "@/src/components/ProgressRing";
+import { useFocusEffect } from "@react-navigation/native";
 import { StatusBar } from "expo-status-bar";
 import { useRouter } from "expo-router";
 import { useTaskStore } from "@/src/store/useTaskStore";
-import { shallow } from "zustand/shallow";
 import * as Location from "expo-location";
-import CustomSplashScreen from "@/src/components/CustomSplashScreen";
 
 export default function DashboardScreen() {
   const router = useRouter();
@@ -41,7 +28,6 @@ export default function DashboardScreen() {
   const loading = useTaskStore((state) => state.loading);
   const loadTasks = useTaskStore((state) => state.loadTasks);
   const loadStats = useTaskStore((state) => state.loadStats);
-  const toggleTask = useTaskStore((state) => state.toggleTask);
   const addTask = useTaskStore((state) => state.addTask);
   const subscriptionStatus = useTaskStore((state) => state.subscriptionStatus);
   const checkSubscription = useTaskStore((state) => state.checkSubscription);
@@ -50,12 +36,12 @@ export default function DashboardScreen() {
     (state) => state.isSubscriptionLoading,
   );
 
-  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [selectedDate] = useState(new Date());
   const [weather, setWeather] = useState<{
     temp: number | null;
+    condition: string | null;
     city: string | null;
-    country: string | null;
-  }>({ temp: null, city: null, country: null });
+  }>({ temp: null, condition: null, city: null });
   const [weatherLoading, setWeatherLoading] = useState(true);
   const [isModalVisible, setModalVisible] = useState(false);
   const isFetchingRef = React.useRef(false);
@@ -63,43 +49,31 @@ export default function DashboardScreen() {
   const fetchWeather = async () => {
     try {
       setWeatherLoading(true);
-
       const { status } = await Location.requestForegroundPermissionsAsync();
-
       if (status !== "granted") {
-        console.log("Location permission denied");
+        setWeatherLoading(false);
         return;
       }
 
       const location = await Location.getCurrentPositionAsync({});
-
       const lat = location.coords.latitude;
       const lon = location.coords.longitude;
 
-      console.log("GPS:", lat, lon);
-
-      // 🌍 Get city name
       const geo = await Location.reverseGeocodeAsync({
         latitude: lat,
         longitude: lon,
       });
-      console.log("Geo:", geo);
-
-      const city = geo[0]?.city;
-      const country = geo[0]?.country;
+      const city = geo[0]?.city || geo[0]?.region;
 
       const weatherRes = await fetch(
         `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`,
       );
-
       const weatherData = await weatherRes.json();
-
-      console.log("Weather Data:", weatherData);
 
       setWeather({
         temp: Math.round(weatherData.current_weather.temperature),
+        condition: "Cloudy", // Simplified for design
         city: city,
-        country: country,
       });
     } catch (error) {
       console.error("Weather fetch failed:", error);
@@ -108,37 +82,9 @@ export default function DashboardScreen() {
     }
   };
 
-  // console.log("Weather:", weather);
-
   React.useEffect(() => {
     fetchWeather();
   }, []);
-
-  const weekDays = React.useMemo(() => {
-    const days = [];
-    for (let i = 6; i >= 0; i--) {
-      const date = new Date();
-      date.setDate(date.getDate() - i);
-      days.push(date);
-    }
-    return days;
-  }, []);
-
-  const getGreeting = () => {
-    const hour = new Date().getHours();
-    if (hour < 12) return "Good Morning";
-    if (hour < 17) return "Good Afternoon";
-    if (hour < 21) return "Good Evening";
-    return "Good Night";
-  };
-
-  const getWeatherIcon = () => {
-    const hour = new Date().getHours();
-    if (hour < 6 || hour >= 21) return <Moon color={Colors.text} size={28} />;
-    if (hour < 12) return <Sun color="#FCA311" size={28} />;
-    if (hour < 17) return <CloudSun color="#FCA311" size={28} />;
-    return <Cloud color={Colors.textMuted} size={28} />;
-  };
 
   const loadData = React.useCallback(async () => {
     if (isFetchingRef.current || !user?.id) return;
@@ -156,7 +102,6 @@ export default function DashboardScreen() {
     loadData();
   }, [loadData]);
 
-  // Subscription check on focus
   useFocusEffect(
     React.useCallback(() => {
       if (user?.id) {
@@ -165,275 +110,412 @@ export default function DashboardScreen() {
     }, [user?.id, checkSubscription]),
   );
 
-  const handleToggleTask = async (id: string) => {
-    if (!user?.id) return;
-    try {
-      await toggleTask(id);
-      loadStats(user.id); // Background refresh stats
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
   const handleSaveGoal = async (goalData: any) => {
     if (!user?.id) return;
     setModalVisible(false);
     try {
       await addTask(user.id, goalData);
+      loadStats(user.id);
     } catch (e) {
       console.error(e);
     }
   };
 
-  // Local filtering for daily view
-  const currentDatetasks = React.useMemo(() => {
-    return tasks.filter((t) => {
-      const taskDate = new Date(t.scheduledDate);
-      return taskDate.toDateString() === selectedDate.toDateString();
-    });
-  }, [tasks, selectedDate]);
-
-  const completionProgress = React.useMemo(() => {
-    if (currentDatetasks.length === 0) return 0;
-    return (
-      currentDatetasks.filter((t: any) => t.isCompleted).length /
-      currentDatetasks.length
-    );
-  }, [currentDatetasks]);
-
-  // subcription handaler when click button
-  const handlePress = () => {
-    // 🚫 Block interaction until system is ready
-    if (!isAuthReady || isSubscriptionLoading) {
-      console.log("⏳ Still initializing, ignore tap");
-      return <CustomSplashScreen />;
-    }
-
+  const handlePressPlus = () => {
+    if (!isAuthReady || isSubscriptionLoading) return;
     if (subscriptionStatus === "FREE" && tasks.length >= 2) {
       router.push("/subscription");
     } else {
-      setModalVisible(true); // or setCurrentView("add-meal")
+      setModalVisible(true);
     }
   };
+
+  // Filter tasks for today
+  const todayTasks = tasks.filter((t) => {
+    const taskDate = new Date(t.scheduledDate);
+    return taskDate.toDateString() === new Date().toDateString();
+  });
+  const todayTasksCount = todayTasks.length;
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar style="dark" />
       <LinearGradient
-        colors={["#E3F2FD", "#F3E5F5", "#FCE4EC"]}
+        colors={["#F4F2ED", "#F4F2ED"]}
         style={StyleSheet.absoluteFill}
       />
-      <ScrollView contentContainerStyle={styles.container}>
+      <ScrollView
+        contentContainerStyle={styles.container}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Header Section */}
         <View style={styles.header}>
+          <View style={styles.headerLeft}>
+            <Image
+              source={require("@/assets/images/icons_home_screen/profile_image.png")}
+              style={styles.profileImage}
+            />
+            <View style={styles.greetingContainer}>
+              <Text style={styles.greetingText}>
+                Good morning, {user?.full_name?.split(" ")[0] || "Alexa"} 👋
+              </Text>
+              <Text style={styles.welcomeBackText}>Welcome Back</Text>
+            </View>
+          </View>
+
+          <View style={styles.weatherCard}>
+            <Text style={styles.weatherTemp}>{weather.temp ?? "--"}°</Text>
+            <View style={styles.weatherInfo}>
+              <Text style={styles.weatherCondition}>
+                {weather.condition || "Cloudy"}
+              </Text>
+              <Text style={styles.weatherCity}>
+                {weather.city || "Haridwar"}
+              </Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Quick Access Section */}
+        <Text style={styles.sectionTitle}>QUICK ACCESS</Text>
+        <View style={styles.quickAccessRow}>
+          {/* Planner Card */}
+          <TouchableOpacity
+            style={styles.quickAccessCardContainer}
+            onPress={() => router.push("/planner")}
+          >
+            <LinearGradient
+              colors={["#0BB3FF", "#F79219"]}
+              style={styles.motivationGradientBackground}
+            />
+            <View style={styles.quickAccessGlassOverlay}>
+              <Image
+                source={require("@/assets/images/icons_home_screen/planner_quick_acess.png")}
+                style={styles.quickAccessIcon}
+                resizeMode="contain"
+              />
+              <Text style={[styles.quickAccessTitle, { color: "#F79219" }]}>
+                Planner
+              </Text>
+              <Text style={styles.quickAccessSubtitle}>
+                {todayTasksCount} Tasks Today
+              </Text>
+            </View>
+          </TouchableOpacity>
+
+          {/* Calorie AI Card */}
+          <TouchableOpacity
+            style={styles.quickAccessCardContainer}
+            onPress={() => router.push("/calorie")}
+          >
+            <LinearGradient
+              colors={["#0BB3FF", "#F79219"]}
+              style={styles.motivationGradientBackground}
+            />
+            <View style={styles.quickAccessGlassOverlay}>
+              <Image
+                source={require("@/assets/images/icons_home_screen/calori_quick_acess.png")}
+                style={styles.quickAccessIcon}
+                resizeMode="contain"
+              />
+              <Text style={[styles.quickAccessTitle, { color: "#0BB3FF" }]}>
+                Calorie AI
+              </Text>
+              <Text style={styles.quickAccessSubtitle}>1,840 / 2,000 kcal</Text>
+            </View>
+          </TouchableOpacity>
+        </View>
+
+        {/* Streaks Section */}
+        <Text style={styles.sectionTitle}>STREAKS</Text>
+        <TouchableOpacity style={styles.streakCardMain}>
           <LinearGradient
-            colors={["rgba(255,255,255,0.4)", "transparent"]}
-            style={styles.headerGlow}
+            colors={["#021025", "#021025"]}
+            style={styles.streakGradient}
+          >
+            {/* Corner Glows */}
+            <LinearGradient
+              colors={["rgba(209, 0, 40, 0.3)", "transparent"]}
+              style={[styles.cornerGlow, { top: -20, right: -20 }]}
+            />
+            <LinearGradient
+              colors={["rgba(247, 146, 25, 0.2)", "transparent"]}
+              style={[styles.cornerGlow, { bottom: -20, left: -20 }]}
+            />
+
+            <View style={styles.streakContent}>
+              <View>
+                <Text style={styles.streakType}>PLANNING STREAK</Text>
+                <Text style={styles.streakDays}>
+                  {stats?.dailyStreak || 0} Day
+                </Text>
+                <Text style={styles.activeNow}>Active Now</Text>
+              </View>
+              <View style={styles.streakCircleContainer}>
+                <ProgressRing
+                  progress={(stats?.completionRate || 0) / 100}
+                  size={80}
+                  strokeWidth={4}
+                  gradientColors={["#F79219", "#D10028"]}
+                  trackColor="#FFFFFF"
+                >
+                  <Image
+                    source={require("@/assets/images/icons_home_screen/planner_streak.png")}
+                    style={{ width: 45, height: 45 }}
+                    resizeMode="contain"
+                  />
+                </ProgressRing>
+              </View>
+            </View>
+          </LinearGradient>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.streakCardMain}>
+          <LinearGradient
+            colors={["#021025", "#021025"]}
+            style={styles.streakGradient}
+          >
+            {/* Corner Glows */}
+            <LinearGradient
+              colors={["rgba(85, 88, 255, 0.3)", "transparent"]}
+              style={[styles.cornerGlow, { top: -20, right: -20 }]}
+            />
+            <LinearGradient
+              colors={["rgba(0, 192, 255, 0.2)", "transparent"]}
+              style={[styles.cornerGlow, { bottom: -20, left: -20 }]}
+            />
+
+            <View style={styles.streakContent}>
+              <View>
+                <Text style={styles.streakType}>CALORIE AI</Text>
+                <Text style={styles.streakDays}>7 Day</Text>
+                <Text style={styles.activeNow}>Active Now</Text>
+              </View>
+              <View style={styles.streakCircleContainer}>
+                <ProgressRing
+                  progress={0.8}
+                  size={80}
+                  strokeWidth={4}
+                  gradientColors={["#00C0FF", "#5558FF"]}
+                  trackColor="#FFFFFF"
+                >
+                  <Image
+                    source={require("@/assets/images/icons_home_screen/calori_strak.png")}
+                    style={{ width: 45, height: 45 }}
+                    resizeMode="contain"
+                  />
+                </ProgressRing>
+              </View>
+            </View>
+          </LinearGradient>
+        </TouchableOpacity>
+
+        {/* Motivation Card */}
+        <View style={styles.motivationCardContainer}>
+          <LinearGradient
+            colors={["#0BB3FF", "#F79219"]}
+            style={styles.motivationGradientBackground}
           />
-          <View style={styles.headerTop}>
-            <View>
-              <Text style={styles.greeting}>{getGreeting()},</Text>
-              <View style={styles.nameRow}>
-                {weatherLoading ? (
-                  <Text style={styles.greeting}>Fetching weather...</Text>
-                ) : (
-                  <>
-                    {weather.temp !== null && (
-                      <Text style={styles.name}>{weather.temp}°C</Text>
-                    )}
-                    {weather.city ? (
-                      <Text style={styles.cityText}>
-                        {weather.city}, {weather.country}
-                      </Text>
-                    ) : null}
-                    {getWeatherIcon()}
-                  </>
+          <View style={styles.motivationGlassOverlay}>
+            <View style={styles.motivationCard}>
+              <View style={styles.motivationIconContainer}>
+                <Image
+                  source={require("@/assets/images/icons_home_screen/planner_streak.png")}
+                  style={{ width: 32, height: 32 }}
+                  resizeMode="contain"
+                />
+              </View>
+              <View style={styles.motivationTextContainer}>
+                <Text style={styles.motivationTitle}>
+                  Don't break the chain!
+                </Text>
+                <Text style={styles.motivationSubtitle}>
+                  You're on a 7-day roll - keep the streak alive today.
+                </Text>
+              </View>
+            </View>
+          </View>
+        </View>
+
+        {/* Today's Stats Section */}
+        <Text style={styles.sectionTitle}>TODAY'S STATS</Text>
+        <View style={styles.statsRow}>
+          {/* Tasks Completion Card */}
+          <View style={styles.statCardContainer}>
+            <LinearGradient
+              colors={["#0BB3FF", "#F79219"]}
+              style={styles.motivationGradientBackground}
+            />
+            <View style={styles.statCardGlassOverlay}>
+              <View style={styles.statCardHeader}>
+                <Text style={styles.statValue}>
+                  {Math.round(stats?.completionRate || 0)}%
+                </Text>
+                <Image
+                  source={require("@/assets/images/icons_home_screen/planner_today_stats.png")}
+                  style={styles.statIcon}
+                />
+              </View>
+              <Text style={styles.statLabel}>Tasks Today</Text>
+              <View style={styles.perfectDayTag}>
+                <View style={styles.perfectDayDot} />
+                <Text style={styles.perfectDayText}>Perfect Day</Text>
+              </View>
+            </View>
+          </View>
+
+          {/* Calorie Progress Card */}
+          <View style={styles.statCardContainer}>
+            <LinearGradient
+              colors={["#0BB3FF", "#F79219"]}
+              style={styles.motivationGradientBackground}
+            />
+            <View style={styles.statCardGlassOverlay}>
+              <View style={styles.statCardHeader}>
+                <Text style={styles.statValue}>1,840</Text>
+                <Image
+                  source={require("@/assets/images/icons_home_screen/calori_today_stats.png")}
+                  style={styles.statIcon}
+                />
+              </View>
+              <Text style={styles.statLabel}>Kcal • On Target</Text>
+              <View style={styles.onTrackTag}>
+                <Text style={styles.onTrackText}>On Track</Text>
+              </View>
+            </View>
+          </View>
+        </View>
+
+        {/* Weekly Goal Section */}
+        <View style={styles.weeklyGoalCard}>
+          <View style={styles.weeklyGoalHeader}>
+            <Text style={styles.weeklyGoalTitle}>Weekly Goal</Text>
+            <Text style={styles.weeklyGoalPercentage}>78%</Text>
+          </View>
+          <View style={styles.progressBarBg}>
+            <View style={[styles.progressBarFill, { width: "78%" }]} />
+          </View>
+          <View style={styles.weeklyGoalFooter}>
+            <Text style={styles.weeklyGoalSub}>14 of 18 tasks done</Text>
+            <Text style={styles.weeklyGoalSub}>4 remaining</Text>
+          </View>
+        </View>
+
+        {/* Today's Plan Section */}
+        <View style={styles.todayPlanHeader}>
+          <Text style={styles.sectionTitle}>TODAY'S PLAN</Text>
+          <TouchableOpacity onPress={() => router.push("/planner")}>
+            <Text style={styles.viewAllText}>View All</Text>
+          </TouchableOpacity>
+        </View>
+
+        {todayTasks.map((task) => {
+          const taskDate = new Date(task.scheduledDate);
+          const formattedDate = taskDate.toLocaleDateString("en-US", {
+            month: "short",
+            day: "numeric",
+          });
+
+          // Helper to format 24h to 12h
+          const formatTo12Hour = (timeStr?: string) => {
+            if (!timeStr) return "";
+            if (
+              timeStr.toUpperCase().includes("AM") ||
+              timeStr.toUpperCase().includes("PM")
+            )
+              return timeStr;
+            const [hours, minutes] = timeStr.split(":").map(Number);
+            if (isNaN(hours) || isNaN(minutes)) return timeStr;
+            const ampm = hours >= 12 ? "PM" : "AM";
+            const h12 = hours % 12 || 12;
+            const mStr = minutes.toString().padStart(2, "0");
+            return `${h12}:${mStr} ${ampm}`;
+          };
+
+          const formattedTime = formatTo12Hour(task.scheduledTime);
+          const displayTime = task.isCompleted
+            ? `${formattedDate}, ${formattedTime}`
+            : task.scheduledTime
+              ? `${formattedDate}, ${formattedTime}`
+              : "No time set";
+
+          return (
+            <View key={task.id} style={styles.taskCard}>
+              <View
+                style={[
+                  styles.taskSideBar,
+                  { backgroundColor: task.isCompleted ? "#63D568" : "#63D568" },
+                ]}
+              />
+              <View style={styles.taskCardContent}>
+                <View style={styles.taskCardLeft}>
+                  <TouchableOpacity
+                    style={[
+                      styles.taskToggle,
+                      task.isCompleted && styles.taskToggleActive,
+                    ]}
+                    onPress={() => useTaskStore.getState().toggleTask(task.id)}
+                  >
+                    <View
+                      style={[
+                        styles.taskToggleDot,
+                        task.isCompleted && styles.taskToggleDotActive,
+                      ]}
+                    />
+                  </TouchableOpacity>
+                  <View style={styles.taskInfo}>
+                    <Text
+                      style={[
+                        styles.taskTitle,
+                        task.isCompleted && styles.taskTitleCompleted,
+                      ]}
+                    >
+                      {task.title}
+                    </Text>
+                    <View style={styles.taskMetaRow}>
+                      <Text style={styles.taskTime}>{displayTime}</Text>
+                      <View style={styles.metaDot} />
+                      <View
+                        style={[
+                          styles.statusTag,
+                          task.isCompleted
+                            ? styles.statusTagDone
+                            : styles.statusTagPending,
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.statusTagText,
+                            task.isCompleted
+                              ? styles.statusTagTextDone
+                              : styles.statusTagTextDone,
+                          ]}
+                        >
+                          {task.isCompleted ? "Done" : "Pending"}
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
+                </View>
+                {task.isCompleted && (
+                  <Image
+                    source={require("@/assets/images/icons_home_screen/task_complte_icon.png")}
+                    style={styles.taskCompleteIcon}
+                    resizeMode="contain"
+                  />
                 )}
               </View>
             </View>
-            <TouchableOpacity
-              style={styles.profileBtn}
-              onPress={() => router.push("/profile")}
-            >
-              <View style={styles.profileIconContainer}>
-                <User color={Colors.primary} size={24} />
-              </View>
-            </TouchableOpacity>
+          );
+        })}
+        {todayTasks.length === 0 && (
+          <View style={styles.emptyTasksContainer}>
+            <Text style={styles.emptyTasksText}>No tasks for today</Text>
           </View>
-        </View>
-
-        <View style={styles.calendarContainer}>
-          {weekDays.map((date, index) => {
-            const isSelected =
-              date.toDateString() === selectedDate.toDateString();
-            const dayName = date.toLocaleDateString("en-US", {
-              weekday: "short",
-            });
-            const dayNum = date.getDate().toString().padStart(2, "0");
-
-            const dayMatch = stats?.rollingProgress?.find(
-              (p: any) => p.day === dayName,
-            );
-            const dayRate = dayMatch ? dayMatch.rate : 0;
-
-            return (
-              <TouchableOpacity
-                key={index}
-                style={[styles.dayItem, isSelected && styles.selectedDayItem]}
-                onPress={() => setSelectedDate(date)}
-              >
-                <Text
-                  style={[
-                    styles.dayNameText,
-                    isSelected && styles.selectedDayText,
-                  ]}
-                  numberOfLines={1}
-                  adjustsFontSizeToFit
-                >
-                  {dayName}
-                </Text>
-
-                <View style={styles.dayProgressContainer}>
-                  {isSelected && (
-                    <>
-                      <View style={styles.dayProgressTrack} />
-                      <View
-                        style={[
-                          styles.dayProgressFill,
-                          { height: `${dayRate}%` },
-                        ]}
-                      />
-                    </>
-                  )}
-                  <View
-                    style={[
-                      styles.dayCircle,
-                      isSelected
-                        ? styles.selectedDayCircle
-                        : styles.dashedDayCircle,
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.dayNumText,
-                        isSelected && styles.selectedDayTextItalic,
-                      ]}
-                    >
-                      {dayNum}
-                    </Text>
-                  </View>
-                </View>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-
-        <LinearGradient
-          colors={[Colors.primary, "#3D3A4A"]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.streakCard}
-        >
-          <View style={styles.streakContent}>
-            <View>
-              <Text style={styles.streakLabel}>Current Streak</Text>
-              <Text style={styles.streakValue}>
-                {stats?.dailyStreak || 0} Days
-              </Text>
-            </View>
-            <View style={styles.ringWrapper}>
-              <ProgressRing
-                progress={completionProgress}
-                size={70}
-                strokeWidth={6}
-                color={Colors.secondary}
-                trackColor="rgba(255, 255, 255, 0.2)"
-              >
-                <Flame
-                  color={Colors.secondary}
-                  fill={Colors.secondary}
-                  size={32}
-                />
-              </ProgressRing>
-            </View>
-          </View>
-        </LinearGradient>
-        <View style={styles.insightsPreviewContainer}>
-          <View
-            style={[
-              styles.insightsProgressBarFill,
-              { width: `${stats?.completionRate || 0}%` },
-            ]}
-          />
-          <Text style={styles.insightText}>
-            You’ve completed{" "}
-            <Text style={styles.insightHighlight}>
-              {stats?.completionRate || 0}%
-            </Text>{" "}
-            of your tasks. Best day:{" "}
-            <Text style={styles.insightHighlight}>
-              {stats?.bestDay || "N/A"}
-            </Text>
-            .
-          </Text>
-        </View>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Today's Plan</Text>
-          <TouchableOpacity onPress={() => router.push("/planner")}>
-            <Text style={styles.sectionAction}>View all</Text>
-          </TouchableOpacity>
-        </View>
-        {loading ? (
-          <View
-            style={[
-              styles.loadingContent,
-              { justifyContent: "center", alignItems: "center" },
-            ]}
-          >
-            <ActivityIndicator size="large" color={Colors.primary} />
-            <Text style={{ color: Colors.textMuted, marginTop: 12 }}>
-              Loading data...
-            </Text>
-          </View>
-        ) : (
-          <>
-            {currentDatetasks.map((task) => (
-              <TaskItem
-                key={task.id}
-                title={task.title}
-                isCompleted={task.isCompleted}
-                scheduledDate={task.scheduledDate}
-                scheduledTime={task.scheduledTime}
-                isAutoRolled={task.isAutoRolled}
-                onToggle={() => handleToggleTask(task.id)}
-              />
-            ))}
-
-            {currentDatetasks.length === 0 && (
-              <EmptyState
-                imageSource={require("@/assets/images/planner_checklist_3d.png")}
-                message="Tap + to add your first goal for today"
-              />
-            )}
-          </>
         )}
       </ScrollView>
 
-      <TouchableOpacity
-        style={styles.fab}
-        // onPress={() => {
-        //   // Only redirect if explicitly FREE and NOT loading
-        //   const isFree = subscriptionStatus === "FREE";
-        //   const isSubscriptionLoading =
-        //     useTaskStore.getState().isSubscriptionLoading;
-
-        //   if (isFree && !isSubscriptionLoading && tasks.length >= 2) {
-        //     router.push("/subscription");
-        //   } else {
-        //     setModalVisible(true);
-        //   }
-        // }}
-        onPress={handlePress}
-      >
+      <TouchableOpacity style={styles.fab} onPress={handlePressPlus}>
         <Plus color="#FFF" size={32} />
       </TouchableOpacity>
 
@@ -449,162 +531,490 @@ export default function DashboardScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: "transparent",
+    backgroundColor: "#F4F2ED",
   },
   container: {
-    padding: 20,
+    paddingHorizontal: 20,
+    paddingTop: 20,
     paddingBottom: 100,
   },
   header: {
-    marginBottom: 20,
-    marginTop: 20,
-    position: "relative",
-  },
-  headerTop: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+    marginBottom: 30,
+    marginTop: 10,
   },
-  profileBtn: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: "rgba(255,255,255,0.8)",
-    justifyContent: "center",
-    alignItems: "center",
-    // elevation: 4,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-  },
-  profileIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "rgba(255,255,255,0.9)",
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.5)",
-  },
-  headerGlow: {
-    position: "absolute",
-    top: -60,
-    left: -20,
-    right: -20,
-    height: 120,
-    zIndex: -1,
-  },
-  nameRow: {
+  headerLeft: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
   },
-  greeting: {
-    color: Colors.textMuted,
+  profileImage: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    marginRight: 12,
+  },
+  greetingContainer: {
+    justifyContent: "center",
+  },
+  greetingText: {
     fontSize: 16,
+    fontWeight: "600",
+    color: "#1C1C1C",
+    fontFamily: Fonts.semiBold,
+  },
+  welcomeBackText: {
+    fontSize: 14,
+    color: "#8D8D8D",
     fontFamily: Fonts.regular,
   },
-  name: {
-    color: Colors.text,
-    fontSize: 28,
+  weatherCard: {
+    backgroundColor: "rgba(255, 255, 255, 0.8)",
+    paddingHorizontal: 15,
+    paddingVertical: 8,
+    borderRadius: 20,
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  weatherTemp: {
+    fontSize: 24,
     fontWeight: "bold",
+    marginRight: 8,
     fontFamily: Fonts.bold,
   },
-  cityText: {
-    color: Colors.textMuted,
-    fontSize: 16,
-    fontFamily: Fonts.medium,
-    marginLeft: 4,
+  weatherInfo: {
+    justifyContent: "center",
   },
-  streakCard: {
+  weatherCondition: {
+    fontSize: 12,
+    color: "#0BB3FF",
+    fontWeight: "600",
+    fontFamily: Fonts.semiBold,
+  },
+  weatherCity: {
+    fontSize: 10,
+    color: "#8D8D8D",
+    fontFamily: Fonts.regular,
+  },
+  sectionTitle: {
+    fontSize: 14,
+    fontWeight: "bold",
+    color: "#8D8D8D",
+    letterSpacing: 1.2,
+    marginBottom: 15,
+    marginTop: 10,
+    fontFamily: Fonts.bold,
+  },
+  quickAccessRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    marginBottom: 30,
+  },
+  quickAccessCardContainer: {
+    width: "48%",
     borderRadius: 24,
-    padding: 24,
-    marginBottom: 32,
-    elevation: 8,
-    shadowColor: Colors.primary,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.25,
-    shadowRadius: 12,
+    overflow: "hidden",
+    position: "relative",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.05,
+    shadowRadius: 20,
+    elevation: 2,
+  },
+  quickAccessGlassOverlay: {
+    backgroundColor: "rgba(255, 255, 255, 0.95)",
+    padding: 20,
+    borderRadius: 24,
+    borderWidth: 2,
+    borderColor: "#FFFFFF",
+  },
+  quickAccessIcon: {
+    width: 40,
+    height: 40,
+    marginBottom: 15,
+  },
+  quickAccessTitle: {
+    fontSize: 22,
+    fontWeight: "bold",
+    marginBottom: 5,
+    fontFamily: Fonts.bold,
+  },
+  quickAccessSubtitle: {
+    fontSize: 12,
+    color: "#8D8D8D",
+    fontFamily: Fonts.regular,
+  },
+  streakCardMain: {
+    marginBottom: 15,
+    borderRadius: 20,
+    overflow: "hidden",
+  },
+  streakGradient: {
+    padding: 20,
+    position: "relative",
+    overflow: "hidden",
+  },
+  cornerGlow: {
+    position: "absolute",
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    opacity: 0.6,
   },
   streakContent: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
   },
-  ringWrapper: {
-    width: 70,
-    height: 70,
+  streakType: {
+    color: "#8D8D8D",
+    fontSize: 12,
+    fontWeight: "bold",
+    letterSpacing: 1,
+    marginBottom: 8,
+    fontFamily: Fonts.bold,
+  },
+  streakDays: {
+    color: "#FFFFFF",
+    fontSize: 48,
+    fontWeight: "bold",
+    fontFamily: Fonts.bold,
+  },
+  activeNow: {
+    color: "#63D568",
+    fontSize: 14,
+    fontWeight: "600",
+    marginTop: 5,
+    fontFamily: Fonts.semiBold,
+  },
+  streakCircleContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    padding: 3,
+    backgroundColor: "rgba(255,255,255,0.1)",
     justifyContent: "center",
     alignItems: "center",
   },
-  streakLabel: {
-    color: "rgba(255,255,255,0.8)",
-    fontSize: 14,
-    fontWeight: "600",
-    fontFamily: Fonts.semiBold,
+  streakCircle: {
+    width: 74,
+    height: 74,
+    borderRadius: 37,
+    borderWidth: 3,
+    borderColor: "rgba(255,255,255,0.2)",
+    justifyContent: "center",
+    alignItems: "center",
   },
-  streakValue: {
-    color: "#FFF",
-    fontSize: 32,
-    fontWeight: "800",
+  motivationCardContainer: {
+    marginVertical: 15,
+    borderRadius: 20,
+    overflow: "hidden",
+    position: "relative",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.05,
+    shadowRadius: 20,
+    elevation: 2,
+  },
+  motivationGradientBackground: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  motivationGlassOverlay: {
+    backgroundColor: "rgba(255, 255, 255, 0.95)",
+    padding: 15,
+    borderRadius: 20,
+    borderWidth: 2,
+    borderColor: "#FFFFFF",
+  },
+  motivationCard: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  motivationIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "rgba(255, 75, 43, 0.1)",
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 15,
+  },
+  motivationTextContainer: {
+    flex: 1,
+  },
+  motivationTitle: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "#1C1C1C",
     fontFamily: Fonts.bold,
   },
-  sectionHeader: {
+  motivationSubtitle: {
+    fontSize: 12,
+    color: "#8D8D8D",
+    fontFamily: Fonts.regular,
+  },
+  statsRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 30,
+  },
+  statCardContainer: {
+    width: "48%",
+    borderRadius: 20,
+    overflow: "hidden",
+    position: "relative",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.03,
+    shadowRadius: 15,
+    elevation: 2,
+  },
+  statCardGlassOverlay: {
+    backgroundColor: "rgba(255, 255, 255, 0.95)",
+    padding: 15,
+    borderRadius: 20,
+    borderWidth: 2,
+    borderColor: "#FFFFFF",
+  },
+  statCardHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 16,
+    marginBottom: 10,
   },
-  sectionTitle: {
-    color: Colors.text,
-    fontSize: 18,
-    fontWeight: "700",
+  statValue: {
+    fontSize: 32,
+    fontWeight: "bold",
+    color: "#1C1C1C",
     fontFamily: Fonts.bold,
   },
-  sectionAction: {
-    color: Colors.primary,
+  statIcon: {
+    width: 32,
+    height: 32,
+  },
+  statLabel: {
     fontSize: 14,
+    color: "#8D8D8D",
+    marginBottom: 10,
+    fontFamily: Fonts.medium,
+  },
+  perfectDayTag: {
+    backgroundColor: "#E8FFE8",
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    alignSelf: "flex-start",
+  },
+  perfectDayDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: "#63D568",
+    marginRight: 6,
+  },
+  perfectDayText: {
+    fontSize: 10,
+    color: "#63D568",
+    fontWeight: "bold",
+    fontFamily: Fonts.bold,
+  },
+  onTrackTag: {
+    backgroundColor: "#DDE5FF",
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 10,
+    alignSelf: "flex-start",
+  },
+  onTrackText: {
+    fontSize: 10,
+    color: "#3B82F6",
+    fontWeight: "bold",
+    fontFamily: Fonts.bold,
+  },
+  weeklyGoalCard: {
+    backgroundColor: "#FFFFFF",
+    padding: 20,
+    borderRadius: 20,
+    marginBottom: 20,
+  },
+  weeklyGoalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 15,
+  },
+  weeklyGoalTitle: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "#1C1C1C",
+    fontFamily: Fonts.bold,
+  },
+  weeklyGoalPercentage: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "#1C1C1C",
+    fontFamily: Fonts.bold,
+  },
+  progressBarBg: {
+    height: 10,
+    backgroundColor: "#F0F0F0",
+    borderRadius: 5,
+    overflow: "hidden",
+    marginBottom: 15,
+  },
+  progressBarFill: {
+    height: "100%",
+    backgroundColor: "#3B82F6",
+    borderRadius: 5,
+  },
+  weeklyGoalFooter: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  weeklyGoalSub: {
+    fontSize: 12,
+    color: "#8D8D8D",
+    fontFamily: Fonts.regular,
+  },
+  todayPlanHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 5,
+  },
+  viewAllText: {
+    fontSize: 14,
+    color: "#3B82F6",
     fontWeight: "600",
     fontFamily: Fonts.semiBold,
   },
-  insightsPreviewContainer: {
-    marginTop: 8,
-    backgroundColor: "rgba(255, 255, 255, 0.4)",
-    borderRadius: 20,
-    height: 40,
-    justifyContent: "center",
+  taskCard: {
+    backgroundColor: "#FFFFFF",
+    height: 85,
+    borderRadius: 24,
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 12,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 2,
+    position: "relative",
     overflow: "hidden",
-    borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.3)",
-    marginBottom: 24,
   },
-  insightsProgressBarFill: {
-    position: "absolute",
-    left: 0,
-    top: 0,
-    bottom: 0,
-    backgroundColor: "rgba(255, 255, 255, 0.6)",
-    borderRadius: 20,
+  taskSideBar: {
+    width: 4,
+    height: "50%",
+    borderRadius: 2,
+    marginLeft: 0,
   },
-  insightText: {
-    color: Colors.text,
-    fontSize: 13,
-    textAlign: "center",
-    fontFamily: Fonts.medium,
-    zIndex: 1,
+  taskCardContent: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    flex: 1,
+    padding: 16,
+    paddingLeft: 12,
   },
-  insightHighlight: {
-    color: Colors.primary,
-    fontWeight: "800",
+  taskCardLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+  },
+  taskToggle: {
+    width: 44,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: "#E0E0E0",
+    padding: 2,
+    marginRight: 12,
+  },
+  taskToggleActive: {
+    backgroundColor: "#63D568",
+  },
+  taskToggleDot: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: "#FFFFFF",
+  },
+  taskToggleDotActive: {
+    transform: [{ translateX: 20 }],
+  },
+  taskInfo: {
+    flex: 1,
+  },
+  taskTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#1C1C1C",
+    fontFamily: Fonts.semiBold,
+    marginBottom: 4,
+  },
+  taskTitleCompleted: {
+    textDecorationLine: "line-through",
+    color: "#8D8D8D",
+  },
+  taskMetaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  taskTime: {
+    fontSize: 12,
+    color: "#8D8D8D",
+    fontFamily: Fonts.regular,
+  },
+  metaDot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: "#3B82F6",
+    marginHorizontal: 8,
+  },
+  statusTag: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 8,
+  },
+  statusTagDone: {
+    backgroundColor: "#E8FFE8",
+  },
+  statusTagPending: {
+    backgroundColor: "#E8FFE8", // Using the same light green as requested
+  },
+  statusTagText: {
+    fontSize: 10,
+    fontWeight: "bold",
     fontFamily: Fonts.bold,
+  },
+  statusTagTextDone: {
+    color: "#63D568",
+  },
+  statusTagTextPending: {
+    color: "#3B82F6", // Changed to blue for "Pending" as requested
+  },
+  taskCompleteIcon: {
+    width: 32,
+    height: 32,
+  },
+  emptyTasksContainer: {
+    padding: 30,
+    alignItems: "center",
+  },
+  emptyTasksText: {
+    color: "#8D8D8D",
+    fontFamily: Fonts.regular,
   },
   fab: {
     position: "absolute",
     bottom: 20,
     right: 20,
-    backgroundColor: Colors.primary,
+    backgroundColor: "#3B82F6",
     width: 64,
     height: 64,
     borderRadius: 32,
@@ -615,92 +1025,5 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 4,
-  },
-  loadingContent: {
-    padding: 40,
-    alignItems: "center",
-  },
-  calendarContainer: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 24,
-    paddingHorizontal: 4,
-  },
-  dayItem: {
-    flex: 1,
-    alignItems: "center",
-    paddingVertical: 12,
-    borderRadius: 20,
-  },
-  selectedDayItem: {
-    backgroundColor: "rgba(255, 255, 255, 0.95)",
-    elevation: 6,
-    shadowColor: "rgba(0,0,0,0.1)",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 1,
-    shadowRadius: 12,
-  },
-  dayNameText: {
-    fontSize: 12,
-    color: "#1D1A23",
-    fontWeight: "600",
-    fontFamily: Fonts.semiBold,
-    marginBottom: 8,
-  },
-  selectedDayText: {
-    color: "#000",
-  },
-  selectedDayTextItalic: {
-    color: "#000",
-    fontStyle: "italic",
-    fontFamily: Fonts.bold,
-  },
-  dayProgressContainer: {
-    width: 36,
-    height: 60,
-    justifyContent: "flex-end",
-    alignItems: "center",
-    position: "relative",
-  },
-  dayProgressTrack: {
-    position: "absolute",
-    width: 10,
-    backgroundColor: "rgba(255, 255, 255, 0.4)",
-    top: 0,
-    bottom: 0,
-    borderRadius: 5,
-  },
-  dayProgressFill: {
-    position: "absolute",
-    width: 10,
-    backgroundColor: "rgba(255, 255, 255, 0.8)",
-    bottom: 0,
-    borderRadius: 5,
-    maxHeight: "100%",
-  },
-  dayCircle: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "transparent",
-    zIndex: 2,
-  },
-  selectedDayCircle: {
-    borderWidth: 1.5,
-    borderColor: "#000",
-  },
-  dashedDayCircle: {
-    borderWidth: 1.5,
-    borderColor: Colors.border,
-    borderStyle: "dashed",
-  },
-  dayNumText: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: Colors.text,
-    fontFamily: Fonts.bold,
   },
 });
