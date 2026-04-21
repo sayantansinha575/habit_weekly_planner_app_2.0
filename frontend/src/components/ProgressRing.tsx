@@ -1,6 +1,11 @@
 import React from "react";
 import { View, Text, StyleSheet } from "react-native";
-import Svg, { Circle } from "react-native-svg";
+import Svg, {
+  Circle,
+  Defs,
+  LinearGradient as SvgGradient,
+  Stop,
+} from "react-native-svg";
 import { Colors, Fonts } from "../theme/colors";
 
 interface ProgressRingProps {
@@ -8,6 +13,7 @@ interface ProgressRingProps {
   size?: number;
   strokeWidth?: number;
   color?: string;
+  gradientColors?: string[];
   label?: string;
   subLabel?: string;
   centerText?: string;
@@ -22,6 +28,7 @@ const ProgressRing = ({
   size = 80,
   strokeWidth = 8,
   color = Colors.primary,
+  gradientColors,
   label,
   subLabel,
   centerText,
@@ -34,10 +41,20 @@ const ProgressRing = ({
   const circumference = radius * 2 * Math.PI;
   const strokeDashoffset = circumference - progress * circumference;
 
+  const gradientId = `grad-${(gradientColors || []).join("-")}`;
+
   return (
     <View style={styles.container}>
       <View style={{ width: size, height: size }}>
         <Svg width={size} height={size}>
+          <Defs>
+            {gradientColors && (
+              <SvgGradient id={gradientId} x1="0%" y1="0%" x2="0%" y2="100%">
+                <Stop offset="0%" stopColor={gradientColors[0]} />
+                <Stop offset="100%" stopColor={gradientColors[1]} />
+              </SvgGradient>
+            )}
+          </Defs>
           {/* Background Circle */}
           <Circle
             cx={size / 2}
@@ -52,7 +69,7 @@ const ProgressRing = ({
             cx={size / 2}
             cy={size / 2}
             r={radius}
-            stroke={color}
+            stroke={gradientColors ? `url(#${gradientId})` : color}
             strokeWidth={strokeWidth}
             fill="transparent"
             strokeDasharray={circumference}
