@@ -55,15 +55,37 @@ export default function DashboardScreen() {
         return;
       }
 
-      const location = await Location.getCurrentPositionAsync({});
+      // Try to get current position with a timeout, or use last known position
+      let location;
+      try {
+        location = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Balanced,
+        });
+      } catch (e) {
+        console.warn("Could not get current position, trying last known:", e);
+        location = await Location.getLastKnownPositionAsync({});
+      }
+
+      if (!location) {
+        setWeatherLoading(false);
+        return;
+      }
+
       const lat = location.coords.latitude;
       const lon = location.coords.longitude;
 
-      const geo = await Location.reverseGeocodeAsync({
-        latitude: lat,
-        longitude: lon,
-      });
-      const city = geo[0]?.city || geo[0]?.region;
+      // Geocoding can be flaky on Android, so we wrap it separately
+      let city = null;
+      try {
+        const geo = await Location.reverseGeocodeAsync({
+          latitude: lat,
+          longitude: lon,
+        });
+        city = geo[0]?.city || geo[0]?.region || geo[0]?.subregion;
+      } catch (geoError) {
+        console.warn("Geocoding failed:", geoError);
+        // We continue anyway, as we have lat/lon for the weather API
+      }
 
       const weatherRes = await fetch(
         `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`,
@@ -73,7 +95,7 @@ export default function DashboardScreen() {
       setWeather({
         temp: Math.round(weatherData.current_weather.temperature),
         condition: "Cloudy", // Simplified for design
-        city: city,
+        city: city || "Haridwar", // Fallback to Haridwar if city name fails
       });
     } catch (error) {
       console.error("Weather fetch failed:", error);
@@ -509,8 +531,26 @@ export default function DashboardScreen() {
           );
         })}
         {todayTasks.length === 0 && (
-          <View style={styles.emptyTasksContainer}>
-            <Text style={styles.emptyTasksText}>No tasks for today</Text>
+          <View style={styles.emptyStateWrapper}>
+            {/* Glow/Fade effect behind card */}
+            <View style={styles.emptyStateGlow} />
+
+            <View style={styles.emptyStateCard}>
+              <View style={styles.emptyStateContent}>
+                <Image
+                  source={require("@/assets/images/planner_checklist_3d.png")}
+                  style={styles.emptyStateImage}
+                  resizeMode="contain"
+                />
+                <View style={styles.skeletonContainer}>
+                  <View style={[styles.skeletonBar, { width: "90%" }]} />
+                  <View style={[styles.skeletonBar, { width: "60%" }]} />
+                </View>
+              </View>
+            </View>
+            <Text style={styles.emptyStateCTA}>
+              Tap + to add your first goal for today
+            </Text>
           </View>
         )}
       </ScrollView>
@@ -596,6 +636,7 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: "#8D8D8D",
     fontFamily: Fonts.regular,
+    lineHeight: 16,
   },
   sectionTitle: {
     fontSize: 14,
@@ -1002,13 +1043,69 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
   },
-  emptyTasksContainer: {
-    padding: 30,
+  emptyStateWrapper: {
+    paddingVertical: 10,
     alignItems: "center",
+    marginBottom: 20,
+    width: "100%",
+    position: "relative",
   },
-  emptyTasksText: {
-    color: "#8D8D8D",
-    fontFamily: Fonts.regular,
+  emptyStateGlow: {
+    position: "absolute",
+    bottom: 50,
+    width: "90%",
+    height: 60,
+    backgroundColor: "rgba(255, 105, 180, 0.15)", // Pinkish glow
+    borderRadius: 30,
+    filter: "blur(20px)", // For web, on native we use shadow
+    shadowColor: "#FF69B4",
+    shadowOffset: { width: 0, height: 20 },
+    shadowOpacity: 0.3,
+    shadowRadius: 30,
+    elevation: 0,
+  },
+  emptyStateCard: {
+    backgroundColor: "#FFFFFF",
+    width: "100%",
+    height: 120, // Slightly smaller
+    borderRadius: 35,
+    padding: 20,
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 25,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.06,
+    shadowRadius: 20,
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.9)",
+  },
+  emptyStateContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+  },
+  emptyStateImage: {
+    width: 70, // Slightly smaller
+    height: 70,
+    marginRight: 15,
+  },
+  skeletonContainer: {
+    flex: 1,
+    gap: 12,
+  },
+  skeletonBar: {
+    height: 14,
+    backgroundColor: "#F2F2F2",
+    borderRadius: 7,
+  },
+  emptyStateCTA: {
+    fontSize: 16,
+    color: "#8D9CB5",
+    fontFamily: Fonts.semiBold,
+    textAlign: "center",
+    marginTop: 0,
   },
   fab: {
     position: "absolute",
