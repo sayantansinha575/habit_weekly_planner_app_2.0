@@ -104,17 +104,21 @@ export default function CalorieScreen() {
   const horizontalPagerRef = useRef<ScrollView>(null);
   const [chartLoading, setChartLoading] = useState(false);
 
-  // Generate last 7 days
-  const getLast7Days = () => {
+  // Generate 7-day window anchored to selectedDate's week (Mon–Sun)
+  const weekDays = React.useMemo(() => {
     const days = [];
-    for (let i = 6; i >= 0; i--) {
-      const date = new Date();
-      date.setDate(date.getDate() - i);
-      days.push(date);
+    const ref = new Date(selectedDate);
+    // Find Monday of the selected week
+    const dayOfWeek = ref.getDay(); // 0=Sun, 1=Mon...
+    const diffToMon = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+    ref.setDate(ref.getDate() + diffToMon);
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(ref);
+      d.setDate(ref.getDate() + i);
+      days.push(d);
     }
     return days;
-  };
-  const weekDays = getLast7Days();
+  }, [selectedDate]);
 
   // Form State for Onboarding/Profile
   const [formData, setFormData] = useState({
@@ -654,6 +658,86 @@ export default function CalorieScreen() {
 
   const renderDashboard = () => (
     <View style={styles.mainContainer}>
+
+      {/* ── Fixed Header (outside pager) ── */}
+      <View style={styles.fixedHeader}>
+        {/* Header */}
+        <View style={styles.dashHeader}>
+          <View style={styles.titleRow}>
+            <View style={styles.lightningCircle}>
+              <Zap color="#3B82F6" fill="#3B82F6" size={20} />
+            </View>
+            <View>
+              <Text style={styles.dashTitle}>Calorie AI</Text>
+              <Text style={styles.dashSubtitle}>Nutrition Tracker</Text>
+            </View>
+          </View>
+          <View style={styles.streakBadge}>
+            <Flame color="#FFA500" fill="#FFA500" size={18} />
+            <Text style={styles.streakText}>
+              {calAiDashboard?.streak || 0}
+            </Text>
+          </View>
+        </View>
+
+        {/* Month label + arrows */}
+        <View style={styles.calendarHeader}>
+          <Text style={styles.monthLabel}>
+            {selectedDate.toLocaleDateString("en-US", { month: "long", year: "numeric" }).toUpperCase()}
+          </Text>
+          <View style={styles.arrowRow}>
+            <TouchableOpacity
+              style={styles.arrowBtn}
+              onPress={() => {
+                const prev = new Date(selectedDate);
+                prev.setDate(prev.getDate() - 7);
+                setSelectedDate(prev);
+              }}
+            >
+              <ChevronLeft size={14} color="#6B7280" />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.arrowBtn}
+              onPress={() => {
+                const next = new Date(selectedDate);
+                next.setDate(next.getDate() + 7);
+                setSelectedDate(next);
+              }}
+            >
+              <ChevronRight size={14} color="#6B7280" />
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Date strip — horizontal ScrollView now FREE of pager conflict */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.calendarStrip}
+        >
+          {weekDays.map((date, index) => {
+            const isSelected = date.toDateString() === selectedDate.toDateString();
+            const dayName = date.toLocaleDateString("en-US", { weekday: "short" });
+            const dayNum = date.getDate().toString();
+            return (
+              <TouchableOpacity
+                key={index}
+                style={[styles.dayCell, isSelected && styles.daySelected]}
+                onPress={() => setSelectedDate(date)}
+              >
+                <Text style={[styles.calDayName, isSelected && styles.calDayNameSel]}>
+                  {dayName}
+                </Text>
+                <Text style={[styles.calDayNum, isSelected && styles.calDayNumSel]}>
+                  {dayNum}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+      </View>
+
+      {/* ── Horizontal Pager (content only, no header) ── */}
       <ScrollView
         ref={horizontalPagerRef}
         horizontal
@@ -671,66 +755,9 @@ export default function CalorieScreen() {
           style={[styles.scrollContainer, { width }]}
           contentContainerStyle={styles.dashboardContent}
         >
-          <View style={styles.dashHeader}>
-            <View style={styles.titleRow}>
-              <Apple color={Colors.text} fill={Colors.secondary} size={32} />
-              <Text style={styles.dashTitle}>Calorie AI</Text>
-            </View>
-            <View style={styles.streakBadge}>
-              <Flame color="#FFA500" fill="#FFA500" size={20} />
-              <Text style={styles.streakText}>
-                {calAiDashboard?.streak || 0}
-              </Text>
-            </View>
-          </View>
-
-          <View style={styles.calendarContainer}>
-            {weekDays.map((date, index) => {
-              const isSelected =
-                date.toDateString() === selectedDate.toDateString();
-              const dayName = date.toLocaleDateString("en-US", {
-                weekday: "short",
-              });
-              const dayNum = date.getDate().toString().padStart(2, "0");
-
-              return (
-                <TouchableOpacity
-                  key={index}
-                  style={[styles.dayItem, isSelected && styles.selectedDayItem]}
-                  onPress={() => setSelectedDate(date)}
-                >
-                  <Text
-                    style={[
-                      styles.dayNameText,
-                      isSelected && styles.selectedDayText,
-                    ]}
-                  >
-                    {dayName}
-                  </Text>
-                  <View
-                    style={[
-                      styles.dayCircle,
-                      isSelected
-                        ? styles.selectedDayCircle
-                        : styles.dashedDayCircle,
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.dayNumText,
-                        isSelected && styles.selectedDayText,
-                      ]}
-                    >
-                      {dayNum}
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-
           {/* Main Calorie Card */}
           <View style={styles.mainRingContainer}>
+            <Text style={styles.budgetSectionLabel}>TODAY'S BUDGET</Text>
             {calAiDashboard && calAiDashboard.caloriesLeft <= 0 ? (
               <View style={styles.celebrationContainer}>
                 <LinearGradient
@@ -760,7 +787,10 @@ export default function CalorieScreen() {
                   </Text>
                   <Text style={styles.caloriesLabel}>
                     Calories{" "}
-                    <Text style={{ fontFamily: Fonts.bold }}>left</Text>
+                    <Text style={{ fontFamily: Fonts.bold, color: "rgba(255,255,255,0.9)" }}>left</Text>
+                  </Text>
+                  <Text style={{ fontSize: 12, color: "rgba(255,255,255,0.5)", fontFamily: Fonts.regular, marginTop: 8 }}>
+                    Goal: {calAiDashboard?.dailyTarget || 2000} kcal · {calAiDashboard ? Math.round(((calAiDashboard.dailyTarget - calAiDashboard.caloriesLeft) / calAiDashboard.dailyTarget) * 100) : 0}% used
                   </Text>
                 </View>
 
@@ -779,16 +809,16 @@ export default function CalorieScreen() {
                           )
                         : 0
                     }
-                    size={110}
-                    strokeWidth={10}
-                    color={Colors.secondary}
-                    trackColor="rgba(0,0,0,0.05)"
+                    size={100}
+                    strokeWidth={8}
+                    color="#60A5FA"
+                    trackColor="rgba(255,255,255,0.15)"
                   >
                     <View style={styles.flameIconContainer}>
                       <Flame
-                        color={Colors.primary}
-                        fill={Colors.primary}
-                        size={24}
+                        color="#FFA500"
+                        fill="#FFA500"
+                        size={22}
                       />
                     </View>
                   </ProgressRing>
@@ -1407,6 +1437,13 @@ const styles = StyleSheet.create({
   },
   mainContainer: {
     flex: 1,
+    backgroundColor: "#F4F2ED",
+  },
+  fixedHeader: {
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 4,
+    backgroundColor: "#F4F2ED",
   },
   horizontalPager: {
     flex: 1,
@@ -1550,25 +1587,41 @@ const styles = StyleSheet.create({
   },
   dashboardContent: {
     padding: 20,
-    paddingBottom: 40,
+    paddingBottom: 140,
+    backgroundColor: "#F4F2ED",
   },
   dashHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginTop: 20,
-    marginBottom: 20,
+    marginTop: 16,
+    marginBottom: 12,
   },
   titleRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    gap: 10,
+  },
+  lightningCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#EFF6FF",
+    justifyContent: "center",
+    alignItems: "center",
   },
   dashTitle: {
-    fontSize: 28,
-    fontWeight: "bold",
-    color: Colors.text,
+    fontSize: 24,
+    fontWeight: "800",
+    color: "#1C1C1E",
     fontFamily: Fonts.bold,
+    lineHeight: 28,
+  },
+  dashSubtitle: {
+    fontSize: 12,
+    color: "#9CA3AF",
+    fontFamily: Fonts.regular,
+    lineHeight: 16,
   },
   streakBadge: {
     flexDirection: "row",
@@ -1590,58 +1643,78 @@ const styles = StyleSheet.create({
     color: "#000",
     fontFamily: Fonts.bold,
   },
-  calendarContainer: {
+  /* ── Calendar ── */
+  calendarHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: 30,
-    backgroundColor: "rgba(255,255,255,0.3)",
-    padding: 10,
-    borderRadius: 24,
-  },
-  dayItem: {
     alignItems: "center",
-    paddingVertical: 12,
-    paddingHorizontal: 10,
-    borderRadius: 20,
-    flex: 1,
+    marginBottom: 14,
   },
-  selectedDayItem: {
-    backgroundColor: "#FFF",
-    elevation: 4,
-    shadowColor: "rgba(0,0,0,0.1)",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 1,
-    shadowRadius: 12,
+  monthLabel: {
+    fontSize: 14,
+    fontFamily: Fonts.semiBold,
+    fontWeight: "600",
+    color: "#6B7280",
+    letterSpacing: 0.6,
   },
-  dayNameText: {
-    fontSize: 12,
-    color: Colors.textMuted,
-    fontFamily: Fonts.medium,
-    marginBottom: 8,
-  },
-  selectedDayText: {
-    color: "#000",
-  },
-  dayCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+  arrowRow: { flexDirection: "row", gap: 8 },
+  arrowBtn: {
+    width: 26,
+    height: 26,
+    borderRadius: 6,
+    backgroundColor: "#FFFFFF",
     justifyContent: "center",
     alignItems: "center",
-    borderWidth: 1.5,
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
   },
-  selectedDayCircle: {
-    borderColor: "#000",
+  calendarStrip: {
+    flexDirection: "row",
+    gap: 8,
+    paddingRight: 20,
+    marginBottom: 8,
   },
-  dashedDayCircle: {
-    borderColor: Colors.border,
-    borderStyle: "dashed",
+  dayCell: {
+    width: 52,
+    height: 70,
+    borderRadius: 16,
+    backgroundColor: "#FFFFFF",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 3,
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    borderWidth: 1,
+    borderColor: "rgba(0,0,0,0.04)",
   },
-  dayNumText: {
-    fontSize: 14,
-    color: Colors.text,
+  daySelected: {
+    backgroundColor: "#1C1C1E",
+    elevation: 8,
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    borderColor: "transparent",
+  },
+  calDayName: {
+    fontSize: 11,
+    fontFamily: Fonts.medium,
+    color: "#9CA3AF",
+    fontWeight: "500",
+  },
+  calDayNameSel: { color: "rgba(255,255,255,0.7)" },
+  calDayNum: {
+    fontSize: 20,
     fontFamily: Fonts.bold,
+    fontWeight: "700",
+    color: "#1C1C1E",
   },
+  calDayNumSel: { color: "#FFFFFF" },
+
   dashSubtitle: {
     fontSize: 14,
     color: Colors.textMuted,
@@ -1660,28 +1733,37 @@ const styles = StyleSheet.create({
   mainRingContainer: {
     alignItems: "center",
     justifyContent: "center",
-    marginVertical: 20,
+    marginVertical: 4,
+    marginBottom: 16,
+  },
+  budgetSectionLabel: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#9CA3AF",
+    letterSpacing: 1.2,
+    textTransform: "uppercase",
+    alignSelf: "flex-start",
+    marginBottom: 10,
+    fontFamily: Fonts.bold,
   },
   macroRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginTop: 20,
+    marginTop: 16,
+    gap: 10,
   },
   macroCard: {
-    width: (width - 60) / 3,
+    flex: 1,
     alignItems: "center",
-    padding: 12,
-    borderRadius: 16,
-    backgroundColor: "#FFF",
-    // borderWidth: 1,
-    borderColor: "#FFF",
-    // shadowColor: "#000",
-    // shadowOffset: { width: 0, height: 4 },
-    // shadowOpacity: 0.05,
-    // shadowRadius: 10,
-    // elevation: 2,
-    marginVertical: 0,
-    height: 140, // Fixed height to align cards
+    padding: 14,
+    borderRadius: 18,
+    backgroundColor: "#FFFFFF",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    elevation: 3,
+    height: 130,
     justifyContent: "space-between",
   },
   macroCardHeader: {
@@ -1736,16 +1818,14 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     padding: 16,
-    marginBottom: 12,
-    backgroundColor: "#FFF",
-    borderWidth: 1,
-    borderColor: "#FFF",
-    shadowColor: "#FFF",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.05,
+    marginBottom: 10,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 18,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.06,
     shadowRadius: 10,
     elevation: 2,
-    marginVertical: 0,
   },
   mealInfo: {
     flex: 1,
@@ -1923,7 +2003,7 @@ const styles = StyleSheet.create({
 
   fab: {
     position: "absolute",
-    bottom: 20,
+    bottom: 100,
     right: 20,
     backgroundColor: Colors.primary,
     width: 64,
@@ -1931,11 +2011,11 @@ const styles = StyleSheet.create({
     borderRadius: 32,
     justifyContent: "center",
     alignItems: "center",
-    elevation: 8,
+    elevation: 10,
     shadowColor: Colors.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
   },
   analyzeButtonGradient: {
     flexDirection: "row",
@@ -1950,30 +2030,34 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.bold,
   },
   mainProgressCard: {
+    overflow: "hidden",
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 30,
-    paddingVertical: 25,
-    backgroundColor: "#FFF",
-    borderRadius: 32,
+    paddingHorizontal: 24,
+    paddingVertical: 28,
+    backgroundColor: "#0D1B2A",
+    borderRadius: 24,
     width: "100%",
-    elevation: 0,
-    borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.02)",
+    elevation: 8,
+    shadowColor: "#0D1B2A",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 20,
   },
   progressLeft: {
     flex: 1,
   },
   caloriesCount: {
-    fontSize: 48,
+    fontSize: 52,
     fontFamily: Fonts.bold,
-    color: "#1D1A23",
-    lineHeight: 56,
+    color: "#FFFFFF",
+    lineHeight: 58,
+    fontWeight: "900",
   },
   caloriesLabel: {
-    fontSize: 18,
-    color: Colors.textMuted,
+    fontSize: 16,
+    color: "rgba(255,255,255,0.7)",
     fontFamily: Fonts.regular,
     marginTop: 4,
   },

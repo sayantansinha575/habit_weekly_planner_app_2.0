@@ -172,7 +172,11 @@ export default function DashboardScreen() {
       >
         {/* Header Section */}
         <View style={styles.header}>
-          <View style={styles.headerLeft}>
+          <TouchableOpacity
+            style={styles.headerLeft}
+            onPress={() => router.push("/profile")}
+            activeOpacity={0.8}
+          >
             <Image
               source={require("@/assets/images/icons_home_screen/profile_image.png")}
               style={styles.profileImage}
@@ -183,13 +187,14 @@ export default function DashboardScreen() {
               </Text>
               <Text style={styles.welcomeBackText}>Welcome Back</Text>
             </View>
-          </View>
+          </TouchableOpacity>
 
           <View style={styles.weatherCard}>
             <Text style={styles.weatherTemp}>
               {weather.temp ?? "--"}
               {"\u00B0"}
             </Text>
+            <View style={styles.weatherDivider} />
             <View style={styles.weatherInfo}>
               <Text style={styles.weatherCondition}>
                 {weather.condition || "Cloudy"}
@@ -275,9 +280,10 @@ export default function DashboardScreen() {
             <View style={styles.streakContent}>
               <View>
                 <Text style={styles.streakType}>PLANNING STREAK</Text>
-                <Text style={styles.streakDays}>
-                  {stats?.dailyStreak || 0} Day
-                </Text>
+                <View style={styles.streakDaysRow}>
+                  <Text style={styles.streakDays}>{stats?.dailyStreak || 0}</Text>
+                  <Text style={styles.streakDayLabel}> Day</Text>
+                </View>
                 <Text style={styles.activeNow}>Active Now</Text>
               </View>
               <View style={styles.streakCircleContainer}>
@@ -317,7 +323,10 @@ export default function DashboardScreen() {
             <View style={styles.streakContent}>
               <View>
                 <Text style={styles.streakType}>CALORIE AI</Text>
-                <Text style={styles.streakDays}>7 Day</Text>
+                <View style={styles.streakDaysRow}>
+                  <Text style={styles.streakDays}>7</Text>
+                  <Text style={styles.streakDayLabel}> Day</Text>
+                </View>
                 <Text style={styles.activeNow}>Active Now</Text>
               </View>
               <View style={styles.streakCircleContainer}>
@@ -388,7 +397,7 @@ export default function DashboardScreen() {
               <Text style={styles.statLabel}>Tasks Today</Text>
               <View style={styles.perfectDayTag}>
                 <View style={styles.perfectDayDot} />
-                <Text style={styles.perfectDayText}>Perfect Day</Text>
+                <Text style={styles.perfectDayText}>↑ Perfect Day</Text>
               </View>
             </View>
           </View>
@@ -434,7 +443,7 @@ export default function DashboardScreen() {
 
         {/* Today's Plan Section */}
         <View style={styles.todayPlanHeader}>
-          <Text style={styles.sectionTitle}>TODAY'S PLAN</Text>
+          <Text style={styles.todayPlanTitle}>Today's Plan</Text>
           <TouchableOpacity onPress={() => router.push("/planner")}>
             <Text style={styles.viewAllText}>View All</Text>
           </TouchableOpacity>
@@ -519,7 +528,7 @@ export default function DashboardScreen() {
                             styles.statusTagText,
                             task.isCompleted
                               ? styles.statusTagTextDone
-                              : styles.statusTagTextDone,
+                              : styles.statusTagTextPending,
                           ]}
                         >
                           {task.isCompleted ? "Done" : "Pending"}
@@ -584,24 +593,24 @@ const styles = StyleSheet.create({
   },
   container: {
     paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 100,
+    paddingTop: 12,
+    paddingBottom: 110,
   },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 30,
-    marginTop: 10,
+    marginBottom: 28,
+    marginTop: 8,
   },
   headerLeft: {
     flexDirection: "row",
     alignItems: "center",
   },
   profileImage: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+    width: 46,
+    height: 46,
+    borderRadius: 23,
     marginRight: 12,
   },
   greetingContainer: {
@@ -620,19 +629,28 @@ const styles = StyleSheet.create({
     marginTop: -2,
   },
   weatherCard: {
-    backgroundColor: "rgba(255, 255, 255, 0.85)",
+    backgroundColor: "rgba(255, 255, 255, 0.92)",
     paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
+    paddingVertical: 8,
+    borderRadius: 28,
     flexDirection: "row",
     alignItems: "center",
-    borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.5)",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.07,
+    shadowRadius: 12,
+    elevation: 3,
+    gap: 8,
+  },
+  weatherDivider: {
+    width: 1,
+    height: 28,
+    backgroundColor: "rgba(0, 0, 0, 0.1)",
   },
   weatherTemp: {
-    fontSize: 24,
-    fontWeight: "bold",
-    marginRight: 8,
+    fontSize: 22,
+    fontWeight: "700",
+    color: "#1C1C1C",
     fontFamily: Fonts.bold,
   },
   weatherInfo: {
@@ -643,20 +661,21 @@ const styles = StyleSheet.create({
     color: "#0BB3FF",
     fontWeight: "600",
     fontFamily: Fonts.semiBold,
+    lineHeight: 15,
   },
   weatherCity: {
     fontSize: 10,
     color: "#8D8D8D",
     fontFamily: Fonts.regular,
-    lineHeight: 16,
+    lineHeight: 14,
   },
   sectionTitle: {
-    fontSize: 14,
-    fontWeight: "bold",
-    color: "#8D8D8D",
-    letterSpacing: 0.56,
-    marginBottom: 15,
-    marginTop: 10,
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#9a9a9a",
+    letterSpacing: 1.2,
+    marginBottom: 12,
+    marginTop: 8,
     fontFamily: Fonts.semiBold,
     textTransform: "uppercase",
   },
@@ -664,58 +683,71 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-start",
-    marginBottom: 30,
+    marginBottom: 22,
+    gap: 12,
   },
   quickAccessCardContainer: {
-    width: "48%",
-    borderRadius: 24,
+    flex: 1,
+    minHeight: 148,
+    borderRadius: 18,
     overflow: "hidden",
     position: "relative",
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.05,
-    shadowRadius: 20,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.06,
+    shadowRadius: 16,
+    elevation: 3,
   },
   quickAccessGlassOverlay: {
-    backgroundColor: "rgba(255, 255, 255, 0.95)",
-    padding: 20,
-    borderRadius: 24,
-    borderWidth: 2,
-    borderColor: "#FFFFFF",
+    minHeight: 148,
+    backgroundColor: "rgba(255, 255, 255, 0.97)",
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    borderRadius: 17,
+    justifyContent: "space-between",
   },
   quickAccessIcon: {
     width: 38,
     height: 38,
-    marginBottom: 12,
+    marginBottom: 8,
   },
   quickAccessTitle: {
-    fontSize: 20,
-    fontWeight: "bold",
-    marginBottom: 4,
+    fontSize: 26,
+    fontWeight: "800",
+    marginBottom: 2,
     fontFamily: Fonts.bold,
+    lineHeight: 30,
   },
   quickAccessSubtitle: {
     fontSize: 12,
     color: "#8D8D8D",
     fontFamily: Fonts.regular,
+    marginTop: 2,
   },
   streakCardMain: {
-    marginBottom: 15,
+    marginBottom: 14,
     borderRadius: 20,
     overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.12,
+    shadowRadius: 20,
+    elevation: 4,
   },
   streakGradient: {
-    padding: 20,
+    minHeight: 118,
+    paddingHorizontal: 20,
+    paddingVertical: 18,
     position: "relative",
     overflow: "hidden",
+    backgroundColor: "#021025",
   },
   cornerGlow: {
     position: "absolute",
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    opacity: 0.6,
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    opacity: 0.75,
   },
   streakContent: {
     flexDirection: "row",
@@ -723,64 +755,80 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   streakType: {
-    color: "#8D8D8D",
-    fontSize: 12,
-    fontWeight: "bold",
-    letterSpacing: 1,
-    marginBottom: 8,
+    color: "rgba(255,255,255,0.7)",
+    fontSize: 11,
+    fontWeight: "700",
+    letterSpacing: 1.2,
+    marginBottom: 4,
     fontFamily: Fonts.bold,
+    textTransform: "uppercase",
+  },
+  streakDaysRow: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    marginBottom: 2,
   },
   streakDays: {
     color: "#FFFFFF",
-    fontSize: 48,
-    fontWeight: "bold",
+    fontSize: 56,
+    fontWeight: "900",
     fontFamily: Fonts.bold,
+    lineHeight: 58,
+  },
+  streakDayLabel: {
+    color: "rgba(255,255,255,0.8)",
+    fontSize: 20,
+    fontWeight: "600",
+    fontFamily: Fonts.semiBold,
+    lineHeight: 42,
+    marginLeft: 2,
   },
   activeNow: {
     color: "#63D568",
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: "600",
-    marginTop: 5,
+    marginTop: 4,
     fontFamily: Fonts.semiBold,
   },
   streakCircleContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    padding: 3,
-    backgroundColor: "rgba(255,255,255,0.1)",
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    padding: 4,
+    backgroundColor: "rgba(255,255,255,0.08)",
     justifyContent: "center",
     alignItems: "center",
   },
   streakCircle: {
-    width: 74,
-    height: 74,
-    borderRadius: 37,
+    width: 80,
+    height: 80,
+    borderRadius: 40,
     borderWidth: 3,
     borderColor: "rgba(255,255,255,0.2)",
     justifyContent: "center",
     alignItems: "center",
   },
   motivationCardContainer: {
-    marginVertical: 15,
+    marginTop: 4,
+    marginBottom: 22,
     borderRadius: 20,
     overflow: "hidden",
     position: "relative",
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.05,
-    shadowRadius: 20,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.07,
+    shadowRadius: 18,
+    elevation: 3,
   },
   motivationGradientBackground: {
     ...StyleSheet.absoluteFillObject,
   },
   motivationGlassOverlay: {
-    backgroundColor: "rgba(255, 255, 255, 0.95)",
-    padding: 15,
-    borderRadius: 20,
-    borderWidth: 2,
-    borderColor: "#FFFFFF",
+    backgroundColor: "rgba(255, 255, 255, 0.97)",
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    borderRadius: 19,
+    margin: 1.5,
   },
   motivationCard: {
     flexDirection: "row",
@@ -812,25 +860,27 @@ const styles = StyleSheet.create({
   statsRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: 30,
+    marginBottom: 22,
+    gap: 12,
   },
   statCardContainer: {
-    width: "48%",
-    borderRadius: 20,
+    flex: 1,
+    minHeight: 116,
+    borderRadius: 18,
     overflow: "hidden",
     position: "relative",
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.03,
-    shadowRadius: 15,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.06,
+    shadowRadius: 16,
+    elevation: 3,
   },
   statCardGlassOverlay: {
-    backgroundColor: "rgba(255, 255, 255, 0.95)",
-    padding: 15,
-    borderRadius: 20,
-    borderWidth: 2,
-    borderColor: "#FFFFFF",
+    minHeight: 116,
+    backgroundColor: "rgba(255, 255, 255, 0.97)",
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+    borderRadius: 17,
   },
   statCardHeader: {
     flexDirection: "row",
@@ -891,9 +941,15 @@ const styles = StyleSheet.create({
   },
   weeklyGoalCard: {
     backgroundColor: "#FFFFFF",
-    padding: 20,
+    paddingHorizontal: 18,
+    paddingVertical: 18,
     borderRadius: 20,
     marginBottom: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.06,
+    shadowRadius: 16,
+    elevation: 3,
   },
   weeklyGoalHeader: {
     flexDirection: "row",
@@ -938,7 +994,14 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 5,
+    marginBottom: 7,
+  },
+  todayPlanTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#1C1A16",
+    marginBottom: 0,
+    fontFamily: Fonts.bold,
   },
   viewAllText: {
     fontSize: 14,
@@ -948,16 +1011,16 @@ const styles = StyleSheet.create({
   },
   taskCard: {
     backgroundColor: "#FFFFFF",
-    height: 85,
-    borderRadius: 24,
+    height: 76,
+    borderRadius: 20,
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 12,
+    marginBottom: 10,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.05,
-    shadowRadius: 10,
-    elevation: 2,
+    shadowRadius: 14,
+    elevation: 3,
     position: "relative",
     overflow: "hidden",
   },
@@ -1039,7 +1102,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#E8FFE8",
   },
   statusTagPending: {
-    backgroundColor: "#E8FFE8", // Using the same light green as requested
+    backgroundColor: "#E8F0FF",
   },
   statusTagText: {
     fontSize: 10,
@@ -1050,7 +1113,7 @@ const styles = StyleSheet.create({
     color: "#63D568",
   },
   statusTagTextPending: {
-    color: "#0BB3FF",
+    color: "#3B82F6",
   },
   taskCompleteIcon: {
     width: 32,
@@ -1070,7 +1133,6 @@ const styles = StyleSheet.create({
     height: 60,
     backgroundColor: "rgba(255, 105, 180, 0.15)", // Pinkish glow
     borderRadius: 30,
-    filter: "blur(20px)", // For web, on native we use shadow
     shadowColor: "#FF69B4",
     shadowOffset: { width: 0, height: 20 },
     shadowOpacity: 0.3,
@@ -1122,18 +1184,18 @@ const styles = StyleSheet.create({
   },
   fab: {
     position: "absolute",
-    bottom: 20,
+    bottom: 100,
     right: 20,
     backgroundColor: "#3B82F6",
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     justifyContent: "center",
     alignItems: "center",
-    elevation: 8,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
+    elevation: 10,
+    shadowColor: "#3B82F6",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.45,
+    shadowRadius: 12,
   },
 });

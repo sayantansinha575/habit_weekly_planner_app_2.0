@@ -1,12 +1,11 @@
-import { Tabs, useRouter, useRootNavigationState } from "expo-router";
-import { View, Text, StyleSheet } from "react-native";
 import { Image } from "expo-image";
+import { Tabs, useRootNavigationState, useRouter } from "expo-router";
+import { StyleSheet, Text, View } from "react-native";
 
 import { HapticTab } from "@/components/haptic-tab";
-import { Fonts } from "@/src/theme/colors";
 import useColorScheme from "@/hooks/use-color-scheme";
 import { useTaskStore } from "@/src/store/useTaskStore";
-import { iapService } from "@/src/services/iapService";
+import { Fonts } from "@/src/theme/colors";
 
 const TAB_ICONS = {
   index: require("@/assets/images/navigation_icon/navigation_home_icon.png"),
@@ -83,7 +82,7 @@ export default function TabLayout() {
         name="calorie"
         options={{
           tabBarIcon: ({ focused }) => (
-            <TabIcon name="calorie" focused={focused} title="Calorie Ai" />
+            <TabIcon name="calorie" focused={focused} title="Calorie AI" />
           ),
         }}
       />
@@ -107,30 +106,27 @@ export default function TabLayout() {
   );
 }
 
-const TAB_BAR_HEIGHT = 80;
+const TAB_BAR_HEIGHT = 65;
 
 const styles = StyleSheet.create({
   tabBar: {
     position: "absolute",
-    bottom: 20,
-    left: 16,
-    right: 16,
+    bottom: 8,
+    left: 20,
+    right: 20,
     height: TAB_BAR_HEIGHT,
-    backgroundColor: "rgba(255, 255, 255, 0.97)",
-    borderRadius: 40,
-    // Shadow
+    backgroundColor: "rgba(255, 255, 255, 0.96)",
+    borderRadius: 36,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.12,
-    shadowRadius: 24,
-    elevation: 12,
-    // Border instead of shadow border
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.10,
+    shadowRadius: 28,
+    elevation: 14,
     borderTopWidth: 0,
-    borderWidth: 1,
-    borderColor: "rgba(0, 0, 0, 0.06)",
     paddingTop: 0,
     paddingBottom: 0,
-    // ⚠️ NO overflow:hidden — clips shadow on Android and clips content
+    marginHorizontal: 20,
+    width: undefined,
   },
 
   // Each tap target fills the full height of the bar
@@ -147,23 +143,25 @@ const styles = StyleSheet.create({
   tabItem: {
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 28,
+    minWidth: 58,
+    minHeight: 52,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRadius: 26,
     gap: 3,
   },
   tabItemActive: {
-    backgroundColor: "#DDE5FF",
+    backgroundColor: "#E0E8FF",
   },
 
   tabIcon: {
-    width: 24,
-    height: 24,
+    width: 22,
+    height: 22,
   },
 
   tabLabel: {
-    fontSize: 11,
-    color: "#1D1A23",
+    fontSize: 10,
+    color: "#6B7280",
     fontFamily: Fonts.medium,
     textAlign: "center",
   },

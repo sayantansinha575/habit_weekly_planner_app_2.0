@@ -125,14 +125,13 @@ const Chart = React.memo(
     return (
       <LineChart
         data={chartData}
-        width={width - 40}
+        width={width - 80}
         height={height}
         chartConfig={chartConfig}
         bezier
         style={{
-          marginVertical: 8,
-          borderRadius: 16,
-          paddingRight: 60, // Increased padding to make more room for labels on the left
+          marginVertical: 4,
+          borderRadius: 12,
         }}
         withHorizontalLines={true}
         withVerticalLines={false}
@@ -336,15 +335,16 @@ export default function CalorieProgress({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: "#F4F2ED",
   },
   content: {
     padding: 20,
-    paddingBottom: 40,
+    paddingBottom: 140,
   },
   title: {
-    fontSize: 28,
-    fontWeight: "bold",
-    color: Colors.text,
+    fontSize: 26,
+    fontWeight: "800",
+    color: "#1C1C1E",
     fontFamily: Fonts.bold,
   },
   headerRow: {
@@ -372,18 +372,28 @@ const styles = StyleSheet.create({
   halfCard: {
     flex: 1,
     padding: 16,
-    borderRadius: 24,
-    backgroundColor: "#FFF",
+    borderRadius: 20,
+    backgroundColor: "#FFFFFF",
     alignItems: "center",
     height: 220,
     justifyContent: "space-between",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    elevation: 3,
   },
   fullCard: {
     width: "100%",
     padding: 20,
-    borderRadius: 24,
-    backgroundColor: "#FFF",
+    borderRadius: 20,
+    backgroundColor: "#FFFFFF",
     marginBottom: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    elevation: 3,
   },
   cardLabel: {
     fontSize: 12,
@@ -475,28 +485,37 @@ const styles = StyleSheet.create({
   filterRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    backgroundColor: "rgba(0,0,0,0.05)",
-    padding: 6,
+    backgroundColor: "rgba(255,255,255,0.85)",
+    padding: 5,
     borderRadius: 16,
     marginBottom: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
   },
   filterTab: {
-    paddingVertical: 8,
-    paddingHorizontal: 16,
+    paddingVertical: 9,
+    paddingHorizontal: 12,
     borderRadius: 12,
+    flex: 1,
+    alignItems: "center",
   },
   activeTab: {
-    backgroundColor: "#FFF",
+    backgroundColor: "#1C1C1E",
     elevation: 2,
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.15,
   },
   filterText: {
     fontSize: 12,
-    color: Colors.textMuted,
+    color: "#9CA3AF",
     fontFamily: Fonts.medium,
+    fontWeight: "500",
   },
   activeFilterText: {
-    color: "#000",
+    color: "#FFFFFF",
+    fontFamily: Fonts.bold,
   },
   cardHeader: {
     flexDirection: "row",
@@ -525,11 +544,10 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.medium,
   },
   chartContainer: {
-    height: 220,
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: 0,
-    marginLeft: 0, // Removed negative margin to keep labels inside
+    overflow: "hidden",
+    borderRadius: 12,
   },
   promoBox: {
     backgroundColor: "rgba(76, 175, 80, 0.1)",

@@ -205,10 +205,7 @@ export default function ProfileScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <LinearGradient
-        colors={["#E3F2FD", "#F3E5F5", "#FCE4EC"]}
-        style={StyleSheet.absoluteFill}
-      />
+      <View style={StyleSheet.absoluteFill} />
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
           <ChevronLeft color={Colors.text} size={28} />
@@ -507,6 +504,7 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
+    backgroundColor: "#F4F2ED",
   },
   header: {
     flexDirection: "row",
@@ -530,10 +528,15 @@ const styles = StyleSheet.create({
   userCard: {
     flexDirection: "row",
     alignItems: "center",
-    padding: 20,
-    backgroundColor: "#FFF",
-    borderRadius: 24,
-    marginBottom: 20,
+    padding: 18,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 22,
+    marginBottom: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 14,
+    elevation: 4,
   },
   avatarContainer: {
     width: 64,
@@ -562,35 +565,41 @@ const styles = StyleSheet.create({
   },
   tabBar: {
     flexDirection: "row",
-    backgroundColor: "rgba(255,255,255,0.4)",
-    borderRadius: 15,
-    padding: 6,
-    marginBottom: 24,
+    backgroundColor: "#F0F0F0",
+    borderRadius: 16,
+    padding: 5,
+    marginBottom: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
   },
   tab: {
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 8,
-    gap: 8,
+    paddingVertical: 9,
+    gap: 6,
     borderRadius: 12,
   },
   activeTab: {
-    backgroundColor: "#FFF",
-    elevation: 2,
+    backgroundColor: "#FFFFFF",
+    elevation: 3,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
   },
   tabText: {
     fontSize: 14,
     fontFamily: Fonts.semiBold,
-    color: Colors.textMuted,
+    color: "#9CA3AF",
   },
   activeTabText: {
-    color: Colors.text,
+    color: "#1C1C1E",
+    fontFamily: Fonts.bold,
   },
   section: {
     marginBottom: 24,
@@ -602,15 +611,14 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   badgesContainer: {
-    backgroundColor: "#FFF",
-    borderRadius: 24,
-    padding: 20,
-    marginTop: 8,
-    // Soft shadow
+    backgroundColor: "#FFFFFF",
+    borderRadius: 22,
+    padding: 18,
+    marginTop: 4,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
     elevation: 3,
   },
   badgeRowTitle: {
@@ -667,9 +675,14 @@ const styles = StyleSheet.create({
     color: Colors.textMuted,
   },
   settingsCard: {
-    padding: 20,
-    backgroundColor: "#FFF",
-    borderRadius: 24,
+    padding: 18,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 22,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    elevation: 3,
   },
   inputGroup: {
     marginBottom: 16,
@@ -704,9 +717,14 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.bold,
   },
   linksCard: {
-    backgroundColor: "#fff",
-    borderRadius: 24,
-    padding: 12,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 22,
+    padding: 10,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    elevation: 3,
   },
   linkRow: {
     flexDirection: "row",
@@ -714,10 +732,10 @@ const styles = StyleSheet.create({
     padding: 12,
   },
   linkIconWrapper: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: "#FFF",
+    width: 38,
+    height: 38,
+    borderRadius: 11,
+    backgroundColor: "#F4F2ED",
     justifyContent: "center",
     alignItems: "center",
     marginRight: 12,
@@ -749,9 +767,14 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.bold,
   },
   deletionCard: {
-    padding: 20,
-    backgroundColor: "#FFF",
-    borderRadius: 24,
+    padding: 18,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 22,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    elevation: 3,
   },
   cautionBanner: {
     flexDirection: "row",
