@@ -1,25 +1,19 @@
-import React, { useMemo, useCallback, useState } from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  Dimensions,
-  TouchableOpacity,
-  ActivityIndicator,
-} from "react-native";
-import {
-  Flame,
-  TrendingUp,
-  Info,
-  Scale,
-  PieChart,
-  User as UserIcon,
-} from "lucide-react-native";
 import { Colors, Fonts } from "@/src/theme/colors";
-import Card from "@/src/components/Card";
 import { LinearGradient } from "expo-linear-gradient";
-import { G } from "react-native-svg";
+import {
+  ChevronLeft,
+  Flame
+} from "lucide-react-native";
+import React, { useCallback, useMemo } from "react";
+import {
+  ActivityIndicator,
+  Dimensions,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { LineChart } from "react-native-chart-kit";
 
 const { width } = Dimensions.get("window");
@@ -51,11 +45,9 @@ const Chart = React.memo(
   }) => {
     if (!data || data.length === 0) return null;
 
-    // Transform data for react-native-chart-kit
     const labels = useMemo(() => {
       return data.map((d, i) => {
         const date = new Date(d.date);
-        // Show label for first, middle, last to keep it clean
         if (data.length <= 7)
           return date.toLocaleDateString("en-US", { weekday: "short" });
         if (
@@ -78,10 +70,9 @@ const Chart = React.memo(
         datasets: [
           {
             data: data.map((d) => d.calories),
-            color: (opacity = 1) => color, // optional
-            strokeWidth: 3, // optional
+            color: (opacity = 1) => color,
+            strokeWidth: 3,
           },
-          // Invisible dataset to ensure Y-axis starts from 0
           {
             data: [0],
             withDots: false,
@@ -97,26 +88,28 @@ const Chart = React.memo(
         backgroundGradientFrom: "#ffffff",
         backgroundGradientTo: "#ffffff",
         decimalPlaces: 0,
-        color: (opacity = 1) => `rgba(99, 102, 241, ${opacity})`,
-        labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity * 0.5})`,
+        color: (opacity = 1) => `rgba(59, 130, 246, ${opacity})`,
+        labelColor: (opacity = 1) => `rgba(107, 114, 128, ${opacity})`,
         style: {
           borderRadius: 16,
         },
         propsForDots: {
-          r: data.length > 7 ? "0" : "4",
+          r: data.length > 7 ? "0" : "5",
           strokeWidth: "2",
-          stroke: color,
+          stroke: "#FFFFFF",
+          fill: color,
         },
         propsForLabels: {
           fontFamily: Fonts.medium,
           fontSize: 10,
         },
-        fillShadowGradient: color,
-        fillShadowGradientOpacity: 0.2,
+        fillShadowGradient: "#3B82F6",
+        fillShadowGradientOpacity: 0.15,
         useShadowColorFromDataset: false,
         propsForBackgroundLines: {
-          strokeDasharray: "4 4",
-          stroke: "#F0F0F0",
+          strokeDasharray: "",
+          stroke: "#F3F4F6",
+          strokeWidth: "1",
         },
       }),
       [data.length, color],
@@ -156,10 +149,9 @@ export default function CalorieProgress({
     { label: "7 Days", days: 7 },
     { label: "30 Days", days: 30 },
     { label: "90 Days", days: 90 },
-    { label: "All time", days: 365 },
+    { label: "All Time", days: 365 },
   ];
-  // Logic: 0% if currentWeight is far from goal, 100% if currentWeight <= goalWeight
-  // We'll use a 20kg historical range for progress visualization if no startWeight is available
+
   const weightProgress = Math.max(
     0,
     Math.min(
@@ -170,8 +162,7 @@ export default function CalorieProgress({
     ),
   );
 
-  const calorieValues = data.chartData.map((d) => d.calories);
-  const chartValues = calorieValues;
+  const weightToGo = Math.max(0, data.currentWeight - data.goalWeight);
 
   const handleFilter = useCallback(
     (days: number) => {
@@ -180,20 +171,38 @@ export default function CalorieProgress({
     [onFilterChange],
   );
 
+  // BMI category label + color
+  const getBmiStyle = () => {
+    const bmi = data.bmi;
+    if (bmi < 18.5) return { label: "Underweight", color: "#3B82F6", bg: "#EBF2FF" };
+    if (bmi < 25) return { label: "Healthy", color: "#22C55E", bg: "#DCFCE7" };
+    if (bmi < 30) return { label: "Overweight", color: "#F59E0B", bg: "#FEF3C7" };
+    return { label: "Obese", color: "#EF4444", bg: "#FEE2E2" };
+  };
+  const bmiStyle = getBmiStyle();
+
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+
+      {/* Header: back arrow + Progress title + streak badge */}
       <View style={styles.headerRow}>
+        <TouchableOpacity style={styles.backBtn} onPress={onProfilePress}>
+          <ChevronLeft color="#1C1C1E" size={22} />
+        </TouchableOpacity>
         <Text style={styles.title}>Progress</Text>
-        {/* <TouchableOpacity style={styles.profileBtn} onPress={onProfilePress}>
-          <UserIcon color={Colors.text} size={24} />
-        </TouchableOpacity> */}
+        <View style={styles.streakBadge}>
+          <Flame color="#FF6B35" fill="#FF6B35" size={16} />
+          <Text style={styles.streakBadgeText}>{data.streak}</Text>
+        </View>
       </View>
 
+      {/* Weight + Streak row */}
       <View style={styles.row}>
-        {/* Weight Card */}
-        <Card style={styles.halfCard}>
-          <Text style={styles.cardLabel}>My Weight</Text>
-          <Text style={styles.weightValue}>{data.currentWeight} kg</Text>
+
+        {/* My Weight Card */}
+        <View style={styles.halfCard}>
+          <Text style={styles.cardSectionLabel}>MY WEIGHT</Text>
+          <Text style={styles.weightValue}>{data.currentWeight}kg</Text>
           <View style={styles.progressBarBg}>
             <View
               style={[
@@ -202,64 +211,62 @@ export default function CalorieProgress({
               ]}
             />
           </View>
-          <Text style={styles.goalText}>Goal {data.goalWeight} kg</Text>
+          <Text style={styles.goalWeightText}>
+            Goal {data.goalWeight} kg
+            {weightToGo > 0 ? (
+              <Text style={styles.toGoText}> · {weightToGo?.toFixed(2)} to go</Text>
+            ) : null}
+          </Text>
           <View style={styles.divider} />
-          <Text style={styles.footerText}>
+          <Text style={styles.nextWeighInText}>
             {(() => {
-              const lastUpdate = new Date(
-                (data as any).updatedAt || new Date(),
-              );
+              const lastUpdate = new Date((data as any).updatedAt || new Date());
               const nextWeighIn = new Date(lastUpdate);
               nextWeighIn.setDate(nextWeighIn.getDate() + 7);
               const now = new Date();
               const diffMs = nextWeighIn.getTime() - now.getTime();
-              const diffDays = Math.max(
-                0,
-                Math.ceil(diffMs / (1000 * 60 * 60 * 24)),
-              );
+              const diffDays = Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
               return `Next weigh-in: ${diffDays}d`;
             })()}
           </Text>
-        </Card>
+        </View>
 
-        {/* Streak Card */}
-        <Card style={styles.halfCard}>
-          <View style={styles.streakCenter}>
-            <View style={styles.flameGlow}>
-              <Flame color="#FFA500" fill="#FFA500" size={40} />
+        {/* Day Streak Card */}
+        <View style={styles.halfCard}>
+          <Text style={styles.cardSectionLabel}>DAY STREAK</Text>
+          <View style={styles.streakTopRow}>
+            <View style={styles.streakLeft}>
+              <Text style={styles.streakNumber}>{data.streak}</Text>
+              <Text style={styles.streakStartText}>Start today!</Text>
             </View>
-            <Text style={styles.streakTitle}>Day streak</Text>
-            <Text style={styles.streakValue}>{data.streak}</Text>
+            <Flame color="#FF6B35" fill="#FF6B35" size={36} />
           </View>
-          <View style={styles.dotRow}>
-            {["S", "M", "T", "W", "T", "F", "S"].map((day, i) => (
-              <View key={i} style={styles.dotContainer}>
-                <Text style={styles.dotLabel}>{day}</Text>
-                <View
-                  style={[
-                    styles.dot,
-                    i === new Date().getDay() && styles.activeDot,
-                  ]}
-                />
-              </View>
-            ))}
+          {/* Day squares */}
+          <View style={styles.daySquaresRow}>
+            {["S", "M", "T", "W", "T", "F", "S"].map((day, i) => {
+              const isToday = i === new Date().getDay();
+              return (
+                <View key={i} style={styles.daySquareItem}>
+                  <Text style={styles.daySquareLabel}>{day}</Text>
+                  <View style={[styles.daySquare, isToday && styles.daySquareActive]} />
+                </View>
+              );
+            })}
           </View>
-        </Card>
+        </View>
       </View>
 
-      {/* Time Filters */}
+      {/* Time Filter Pills */}
       <View style={styles.filterRow}>
-        {filters.map((f: { label: string; days: number }) => {
+        {filters.map((f) => {
           const isActive = activeDays === f.days;
           return (
             <TouchableOpacity
               key={f.label}
-              style={[styles.filterTab, isActive && styles.activeTab]}
+              style={[styles.filterPill, isActive && styles.filterPillActive]}
               onPress={() => handleFilter(f.days)}
             >
-              <Text
-                style={[styles.filterText, isActive && styles.activeFilterText]}
-              >
+              <Text style={[styles.filterPillText, isActive && styles.filterPillTextActive]}>
                 {f.label}
               </Text>
             </TouchableOpacity>
@@ -267,47 +274,56 @@ export default function CalorieProgress({
         })}
       </View>
 
-      {/* Goal Progress Chart */}
-      <Card style={styles.fullCard}>
+      {/* Nutrition Trends Card */}
+      <View style={styles.fullCard}>
         <View style={styles.cardHeader}>
-          <Text style={styles.cardTitle}>Nutrition Trends</Text>
-          <View style={styles.goalBadge}>
-            <TrendingUp color={Colors.primary} size={14} />
-            <Text style={styles.goalBadgeText}>Live Data</Text>
+          <Text style={styles.cardTitle}>NUTRITION TRENDS</Text>
+          <View style={styles.liveDataBadge}>
+            <View style={styles.liveDataDot} />
+            <Text style={styles.liveDataText}>Live Data</Text>
           </View>
         </View>
         <View style={styles.chartContainer}>
           {loading ? (
-            <View>
+            <View style={styles.loadingBox}>
               <ActivityIndicator size="small" color={Colors.primary} />
-              <Text>Loading data...</Text>
+              <Text style={styles.loadingText}>Loading data...</Text>
             </View>
           ) : (
-            <Chart data={data.chartData} color={Colors.primary} height={200} />
+            <Chart data={data.chartData} color="#3B82F6" height={200} />
           )}
         </View>
+        {/* Motivational box */}
         <View style={styles.promoBox}>
+          <Flame color="#FF6B35" fill="#FF6B35" size={18} />
           <Text style={styles.promoText}>
-            You're consistently hitting your targets! Keep up the great
-            momentum.
+            You're consistently hitting your targets! Keep up the great momentum.
           </Text>
         </View>
-      </Card>
+      </View>
 
       {/* BMI Card */}
-      <Card style={styles.fullCard}>
-        <Text style={styles.cardTitle}>Your BMI</Text>
-        <View style={styles.bmiDisplay}>
+      <View style={styles.fullCard}>
+        <Text style={styles.bmiSectionLabel}>BODY MASS INDEX (BMI)</Text>
+
+        <View style={styles.bmiTopRow}>
           <Text style={styles.bmiValue}>{data.bmi}</Text>
-          <View style={styles.bmiCategoryBadge}>
-            <Text style={styles.bmiCategoryText}>
-              Your weight is {data.bmiCategory}
-            </Text>
+          <View style={styles.bmiRightCol}>
+            <Text style={styles.bmiRangeValue}>18.5–24.9</Text>
+            <Text style={styles.bmiRangeLabel}>Healthy Range</Text>
           </View>
         </View>
-        <View style={styles.bmiGauge}>
+
+        <View style={styles.bmiCategoryBadge}>
+          <Text style={[styles.bmiCategoryText, { color: bmiStyle.color }]}>
+            {bmiStyle.label}
+          </Text>
+        </View>
+
+        {/* Gauge bar */}
+        <View style={styles.bmiGaugeWrapper}>
           <LinearGradient
-            colors={["#4D94FF", "#4CAF50", "#FFB84D", "#FF4D4D"]}
+            colors={["#3B82F6", "#22C55E", "#F59E0B", "#EF4444"]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
             style={styles.gaugeBar}
@@ -316,18 +332,28 @@ export default function CalorieProgress({
             style={[
               styles.gaugeIndicator,
               {
-                left: `${Math.max(0, Math.min(100, ((data.bmi - 15) / (40 - 15)) * 100))}%`,
+                left: `${Math.max(2, Math.min(96, ((data.bmi - 15) / (40 - 15)) * 100))}%`,
               },
             ]}
           />
         </View>
+
         <View style={styles.gaugeLabels}>
           <Text style={styles.gaugeLabel}>Underweight</Text>
           <Text style={styles.gaugeLabel}>Healthy</Text>
           <Text style={styles.gaugeLabel}>Overweight</Text>
           <Text style={styles.gaugeLabel}>Obese</Text>
         </View>
-      </Card>
+
+        {/* Tip box */}
+        <View style={styles.bmiTipBox}>
+          <Text style={styles.bmiTipIcon}>💡</Text>
+          <Text style={styles.bmiTipText}>
+            Losing ~1.3 kg/month will bring you to a healthy BMI in about 11 months. You've got this!
+          </Text>
+        </View>
+      </View>
+
     </ScrollView>
   );
 }
@@ -335,52 +361,76 @@ export default function CalorieProgress({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F4F2ED",
+    backgroundColor: "#EEECE8",
   },
   content: {
     padding: 20,
     paddingBottom: 140,
   },
-  title: {
-    fontSize: 26,
-    fontWeight: "800",
-    color: "#1C1C1E",
-    fontFamily: Fonts.bold,
-  },
+
+  // Header
   headerRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     marginBottom: 20,
-    marginTop: 20,
+    marginTop: 12,
   },
-  profileBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: "rgba(0,0,0,0.05)",
+  backBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "#FFFFFF",
     justifyContent: "center",
     alignItems: "center",
-    borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.05)",
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
   },
+  title: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: "#1C1C1E",
+    fontFamily: Fonts.bold,
+  },
+  streakBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FFFFFF",
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 20,
+    gap: 5,
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+  },
+  streakBadgeText: {
+    fontSize: 15,
+    fontWeight: "bold",
+    color: "#1C1C1E",
+    fontFamily: Fonts.bold,
+  },
+
+  // Cards row
   row: {
     flexDirection: "row",
-    gap: 15,
-    marginBottom: 20,
+    gap: 12,
+    marginBottom: 16,
   },
   halfCard: {
     flex: 1,
     padding: 16,
     borderRadius: 20,
     backgroundColor: "#FFFFFF",
-    alignItems: "center",
-    height: 220,
-    justifyContent: "space-between",
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.06,
-    shadowRadius: 12,
+    shadowRadius: 10,
     elevation: 3,
   },
   fullCard: {
@@ -388,159 +438,176 @@ const styles = StyleSheet.create({
     padding: 20,
     borderRadius: 20,
     backgroundColor: "#FFFFFF",
-    marginBottom: 20,
+    marginBottom: 16,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.06,
-    shadowRadius: 12,
+    shadowRadius: 10,
     elevation: 3,
   },
-  cardLabel: {
-    fontSize: 12,
-    color: "rgba(0,0,0,0.5)",
-    fontFamily: Fonts.medium,
+
+  // Weight card
+  cardSectionLabel: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: "#9CA3AF",
+    letterSpacing: 0.8,
+    fontFamily: Fonts.bold,
+    marginBottom: 8,
   },
   weightValue: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: "#000",
+    fontSize: 26,
+    fontWeight: "800",
+    color: "#1C1C1E",
     fontFamily: Fonts.bold,
-    marginVertical: 10,
+    marginBottom: 10,
   },
   progressBarBg: {
     width: "100%",
-    height: 8,
-    backgroundColor: "#F0F0F0",
-    borderRadius: 4,
+    height: 6,
+    backgroundColor: "#F3F4F6",
+    borderRadius: 3,
     overflow: "hidden",
+    marginBottom: 8,
   },
   progressBarFill: {
     height: "100%",
-    backgroundColor: "#4CAF50",
-    borderRadius: 4,
+    backgroundColor: "#3B82F6",
+    borderRadius: 3,
   },
-  goalText: {
+  goalWeightText: {
     fontSize: 12,
-    color: "rgba(0,0,0,0.5)",
-    marginTop: 8,
+    color: "#1C1C1E",
+    fontFamily: Fonts.semiBold,
+    fontWeight: "600",
+  },
+  toGoText: {
+    color: "#6B7280",
+    fontFamily: Fonts.regular,
+    fontWeight: "400",
   },
   divider: {
     width: "100%",
     height: 1,
-    backgroundColor: "#F0F0F0",
-    marginVertical: 12,
+    backgroundColor: "#F3F4F6",
+    marginVertical: 10,
   },
-  footerText: {
+  nextWeighInText: {
     fontSize: 12,
-    color: "rgba(0,0,0,0.4)",
+    color: "#22C55E",
+    fontFamily: Fonts.medium,
   },
-  streakCenter: {
-    alignItems: "center",
-  },
-  flameGlow: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: "rgba(255, 165, 0, 0.1)",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  streakTitle: {
-    fontSize: 14,
-    color: "#FFA500",
-    fontFamily: Fonts.bold,
-    marginTop: 10,
-  },
-  streakValue: {
-    fontSize: 32,
-    fontWeight: "bold",
-    color: "#000",
-    fontFamily: Fonts.bold,
-  },
-  dotRow: {
-    flexDirection: "row",
-    gap: 6,
-    width: "100%",
-    justifyContent: "center",
-    marginTop: 10,
-  },
-  dotContainer: {
-    alignItems: "center",
-  },
-  dotLabel: {
-    fontSize: 8,
-    color: "rgba(0,0,0,0.4)",
-    marginBottom: 4,
-  },
-  dot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: "#E0E0E0",
-  },
-  activeDot: {
-    backgroundColor: "#E0E0E0",
-  },
-  filterRow: {
+
+  // Streak card
+  streakTopRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    backgroundColor: "rgba(255,255,255,0.85)",
-    padding: 5,
-    borderRadius: 16,
-    marginBottom: 20,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    elevation: 2,
+    alignItems: "flex-start",
+    marginBottom: 16,
   },
-  filterTab: {
-    paddingVertical: 9,
-    paddingHorizontal: 12,
-    borderRadius: 12,
+  streakLeft: {
     flex: 1,
+  },
+  streakNumber: {
+    fontSize: 36,
+    fontWeight: "800",
+    color: "#1C1C1E",
+    fontFamily: Fonts.bold,
+    lineHeight: 40,
+  },
+  streakStartText: {
+    fontSize: 13,
+    color: "#6B7280",
+    fontFamily: Fonts.medium,
+    marginTop: 2,
+  },
+  daySquaresRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    width: "100%",
+  },
+  daySquareItem: {
     alignItems: "center",
+    gap: 4,
   },
-  activeTab: {
-    backgroundColor: "#1C1C1E",
-    elevation: 2,
-    shadowOpacity: 0.15,
-  },
-  filterText: {
-    fontSize: 12,
+  daySquareLabel: {
+    fontSize: 9,
     color: "#9CA3AF",
+    fontFamily: Fonts.medium,
+  },
+  daySquare: {
+    width: 14,
+    height: 14,
+    borderRadius: 3,
+    backgroundColor: "#F3F4F6",
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+  },
+  daySquareActive: {
+    backgroundColor: "#3B82F6",
+    borderColor: "#3B82F6",
+  },
+
+  // Filter pills
+  filterRow: {
+    flexDirection: "row",
+    gap: 8,
+    marginBottom: 16,
+  },
+  filterPill: {
+    flex: 1,
+    paddingVertical: 10,
+    paddingHorizontal: 6,
+    borderRadius: 20,
+    alignItems: "center",
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+  },
+  filterPillActive: {
+    backgroundColor: "#1C1C1E",
+    borderColor: "#1C1C1E",
+  },
+  filterPillText: {
+    fontSize: 12,
+    color: "#6B7280",
     fontFamily: Fonts.medium,
     fontWeight: "500",
   },
-  activeFilterText: {
+  filterPillTextActive: {
     color: "#FFFFFF",
     fontFamily: Fonts.bold,
+    fontWeight: "700",
   },
+
+  // Chart card
   cardHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 20,
+    marginBottom: 12,
   },
   cardTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "#000",
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#9CA3AF",
+    letterSpacing: 0.8,
     fontFamily: Fonts.bold,
   },
-  goalBadge: {
+  liveDataBadge: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#F5F5F5",
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-    gap: 4,
+    gap: 5,
   },
-  goalBadgeText: {
+  liveDataDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: "#22C55E",
+  },
+  liveDataText: {
     fontSize: 12,
-    color: "rgba(0,0,0,0.6)",
+    color: "#22C55E",
     fontFamily: Fonts.medium,
   },
   chartContainer: {
@@ -549,69 +616,133 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     borderRadius: 12,
   },
+  loadingBox: {
+    height: 200,
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 8,
+  },
+  loadingText: {
+    fontSize: 13,
+    color: "#9CA3AF",
+    fontFamily: Fonts.regular,
+  },
   promoBox: {
-    backgroundColor: "rgba(76, 175, 80, 0.1)",
-    padding: 16,
-    borderRadius: 16,
-    marginTop: 20,
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F0FDF4",
+    padding: 14,
+    borderRadius: 14,
+    marginTop: 16,
+    gap: 10,
   },
   promoText: {
-    color: "#2E7D32",
-    fontSize: 12,
-    textAlign: "center",
+    flex: 1,
+    color: "#166534",
+    fontSize: 13,
     fontFamily: Fonts.medium,
     lineHeight: 18,
   },
-  bmiDisplay: {
+
+  // BMI card
+  bmiSectionLabel: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: "#9CA3AF",
+    letterSpacing: 0.8,
+    fontFamily: Fonts.bold,
+    marginBottom: 12,
+  },
+  bmiTopRow: {
     flexDirection: "row",
-    alignItems: "baseline",
-    gap: 10,
-    marginVertical: 15,
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    marginBottom: 8,
   },
   bmiValue: {
-    fontSize: 32,
-    fontWeight: "bold",
-    color: "#000",
+    fontSize: 36,
+    fontWeight: "800",
+    color: "#1C1C1E",
     fontFamily: Fonts.bold,
   },
+  bmiRightCol: {
+    alignItems: "flex-end",
+  },
+  bmiRangeValue: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#22C55E",
+    fontFamily: Fonts.bold,
+  },
+  bmiRangeLabel: {
+    fontSize: 11,
+    color: "#9CA3AF",
+    fontFamily: Fonts.regular,
+    marginTop: 2,
+  },
   bmiCategoryBadge: {
-    backgroundColor: "#4CAF50",
+    alignSelf: "flex-start",
+    backgroundColor: "#FEF3C7",
     paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: 8,
+    borderRadius: 20,
+    marginBottom: 14,
   },
   bmiCategoryText: {
-    color: "#FFF",
     fontSize: 12,
-    fontWeight: "bold",
+    fontFamily: Fonts.semiBold,
+    fontWeight: "600",
+    color: "#F59E0B",
   },
-  bmiGauge: {
+  bmiGaugeWrapper: {
     width: "100%",
-    height: 8,
-    borderRadius: 4,
+    height: 10,
+    borderRadius: 5,
     position: "relative",
-    marginVertical: 10,
+    marginBottom: 8,
   },
   gaugeBar: {
     width: "100%",
     height: "100%",
-    borderRadius: 4,
+    borderRadius: 5,
   },
   gaugeIndicator: {
     position: "absolute",
-    top: -4,
-    width: 2,
+    top: -3,
+    width: 16,
     height: 16,
-    backgroundColor: "#000",
+    borderRadius: 8,
+    backgroundColor: "#FFFFFF",
+    borderWidth: 2,
+    borderColor: "#6B7280",
+    marginLeft: -8,
   },
   gaugeLabels: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginTop: 10,
+    marginBottom: 16,
   },
   gaugeLabel: {
-    fontSize: 9,
-    color: "rgba(0,0,0,0.4)",
+    fontSize: 10,
+    color: "#9CA3AF",
     fontFamily: Fonts.medium,
+  },
+  bmiTipBox: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    backgroundColor: "#FFFBEB",
+    padding: 14,
+    borderRadius: 14,
+    gap: 10,
+  },
+  bmiTipIcon: {
+    fontSize: 16,
+  },
+  bmiTipText: {
+    flex: 1,
+    fontSize: 13,
+    color: "#92400E",
+    fontFamily: Fonts.medium,
+    lineHeight: 18,
   },
 });

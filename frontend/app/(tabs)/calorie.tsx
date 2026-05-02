@@ -1,52 +1,46 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  SafeAreaView,
-  TouchableOpacity,
-  TextInput,
-  ActivityIndicator,
-  Alert,
-  Dimensions,
-  KeyboardAvoidingView,
-  Platform,
-  BackHandler,
-} from "react-native";
+import CalorieProgress from "@/src/components/CalorieProgress";
+import Card from "@/src/components/Card";
+import CustomSplashScreen from "@/src/components/CustomSplashScreen";
+import EmptyState from "@/src/components/EmptyState";
+import ProgressRing from "@/src/components/ProgressRing";
+import ScannerOverlay from "@/src/components/ScannerOverlay";
+import { api } from "@/src/services/api";
+import { Colors, Fonts } from "@/src/theme/colors";
+import { useFocusEffect } from "@react-navigation/native";
+import { CameraView, useCameraPermissions } from "expo-camera";
+import { Image } from "expo-image";
+import * as ImagePicker from "expo-image-picker";
+import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import {
-  Camera,
-  Search,
-  Utensils,
-  Info,
-  User as UserIcon,
-  ChevronRight,
-  Plus,
-  TrendingUp,
-  ChevronLeft,
-  Flame,
-  Zap,
-  Target,
   Apple,
-  RefreshCw,
-  MoreHorizontal,
+  ChevronLeft,
+  ChevronRight,
+  Flame,
   Image as LucideImage,
+  MoreHorizontal,
+  Plus,
+  RefreshCw,
+  TrendingUp,
+  Zap
 } from "lucide-react-native";
-import { LinearGradient } from "expo-linear-gradient";
-import { Colors, Fonts } from "@/src/theme/colors";
-import Card from "@/src/components/Card";
-import ProgressRing from "@/src/components/ProgressRing";
-import { api } from "@/src/services/api";
-import { useFocusEffect } from "@react-navigation/native";
-import * as ImagePicker from "expo-image-picker";
-import { Image } from "expo-image";
-import CalorieProgress from "@/src/components/CalorieProgress";
-import EmptyState from "@/src/components/EmptyState";
-import ScannerOverlay from "@/src/components/ScannerOverlay";
-import { Animated, Easing } from "react-native";
-import { CameraView, useCameraPermissions } from "expo-camera";
-import CustomSplashScreen from "@/src/components/CustomSplashScreen";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import {
+  ActivityIndicator,
+  Alert,
+  Animated,
+  BackHandler,
+  Dimensions,
+  Easing,
+  Platform,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
+} from "react-native";
 
 const { width } = Dimensions.get("window");
 
@@ -108,8 +102,7 @@ export default function CalorieScreen() {
   const weekDays = React.useMemo(() => {
     const days = [];
     const ref = new Date(selectedDate);
-    // Find Monday of the selected week
-    const dayOfWeek = ref.getDay(); // 0=Sun, 1=Mon...
+    const dayOfWeek = ref.getDay();
     const diffToMon = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
     ref.setDate(ref.getDate() + diffToMon);
     for (let i = 0; i < 7; i++) {
@@ -211,8 +204,8 @@ export default function CalorieScreen() {
       Alert.alert("Error", "Failed to capture photo");
     }
   };
+
   const handlePress = () => {
-    // 🚫 Block interaction until system is ready
     if (!isAuthReady || isSubscriptionLoading) {
       console.log("⏳ Still initializing, ignore tap");
       return <CustomSplashScreen />;
@@ -226,9 +219,7 @@ export default function CalorieScreen() {
   };
 
   const takePhoto = async () => {
-    // Falls back to image picker if camera view is not active or needed
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
-    // ... rest of old takePhoto if needed, but we'll use handleScannerCapture mostly
   };
 
   const pickImage = async () => {
@@ -245,7 +236,6 @@ export default function CalorieScreen() {
     }
   };
 
-  // Hardware Back Button Handling
   useFocusEffect(
     useCallback(() => {
       const onBackPress = () => {
@@ -267,11 +257,9 @@ export default function CalorieScreen() {
   const fetchProgressData = useCallback(
     async (days: number) => {
       if (!user?.id) return;
-
-      setActiveDays(days); // ✅ update UI first
+      setActiveDays(days);
       setChartLoading(true);
       await loadCalAiProgress(user.id, days);
-
       setChartLoading(false);
     },
     [user?.id, loadCalAiProgress],
@@ -286,12 +274,10 @@ export default function CalorieScreen() {
   useEffect(() => {
     if (hasCalAiLoaded && !calAiLoading) {
       if (calAiProfile) {
-        // Only auto-redirect if we are at the start or stuck in onboarding
         if (currentView === null || currentView === "onboarding") {
           setCurrentView("dashboard");
         }
       } else {
-        // Only auto-redirect if we are at the start or stuck in dashboard without a profile
         if (currentView === null || currentView === "dashboard") {
           setCurrentView("onboarding");
         }
@@ -299,13 +285,11 @@ export default function CalorieScreen() {
     }
   }, [hasCalAiLoaded, calAiLoading, calAiProfile, currentView]);
 
-  // Sync formData with calAiProfile when profile view is opened or profile changes
   useEffect(() => {
     if (
       calAiProfile &&
       (currentView === "profile" || currentView === "onboarding")
     ) {
-      // Check if data actually changed before setting to avoid loop/extra render
       const newGoalWeight = kgToLbs(calAiProfile.goalWeight);
       const newCurrentWeight = kgToLbs(calAiProfile.currentWeight);
       const newHeight = cmToFtIn(calAiProfile.height);
@@ -368,7 +352,6 @@ export default function CalorieScreen() {
     formData.dailyStepGoal.trim() !== "";
 
   useEffect(() => {
-    // Separate effect for progress fetching to avoid re-running full init
     if (user?.id && currentView === "dashboard") {
       fetchProgressData(activeDays);
     }
@@ -380,7 +363,6 @@ export default function CalorieScreen() {
     try {
       setIsOnboardingLoading(true);
 
-      // Convert to backend units (kg, cm)
       const goalWeightKg =
         formData.weightUnit === "lbs"
           ? lbsToKg(formData.goalWeight)
@@ -405,7 +387,6 @@ export default function CalorieScreen() {
         dailyStepGoal: parseInt(formData.dailyStepGoal),
       };
 
-      // Ensure animation shows for at least 1.5s for UX
       const [updated] = await Promise.all([
         api.updateCalAiProfile(user.id, payload),
         new Promise((resolve) => setTimeout(resolve, 2000)),
@@ -413,13 +394,11 @@ export default function CalorieScreen() {
 
       await loadCalAiData(user.id);
 
-      // Smooth transition
       Animated.timing(screenFade, {
         toValue: 0,
         duration: 400,
         useNativeDriver: true,
       }).start(() => {
-        // Force refresh all data for dashboard
         loadCalAiData(user.id);
         setCurrentView("dashboard");
         setIsOnboardingLoading(false);
@@ -445,9 +424,7 @@ export default function CalorieScreen() {
       await api.analyzeMeal(user.id, mealDescription, imageBase64 || undefined);
       setMealDescription("");
 
-      // Smooth transition back
       setTimeout(async () => {
-        // Fade out screen
         Animated.timing(screenFade, {
           toValue: 0,
           duration: 400,
@@ -455,17 +432,16 @@ export default function CalorieScreen() {
         }).start(async () => {
           setSelectedImage(null);
           setImageBase64(null);
-          await loadCalAiData(user.id); // Refresh dashboard data
+          await loadCalAiData(user.id);
           setCurrentView("dashboard");
           setIsScanning(false);
-          // Fade back in
           Animated.timing(screenFade, {
             toValue: 1,
             duration: 400,
             useNativeDriver: true,
           }).start();
         });
-      }, 1000); // Small delay to let user see "Finalizing..."
+      }, 1000);
     } catch (e) {
       setIsScanning(false);
       Alert.alert("Error", "Failed to analyze meal");
@@ -659,7 +635,7 @@ export default function CalorieScreen() {
   const renderDashboard = () => (
     <View style={styles.mainContainer}>
 
-      {/* ── Fixed Header (outside pager) ── */}
+      {/* ── Fixed Header ── */}
       <View style={styles.fixedHeader}>
         {/* Header */}
         <View style={styles.dashHeader}>
@@ -669,11 +645,11 @@ export default function CalorieScreen() {
             </View>
             <View>
               <Text style={styles.dashTitle}>Calorie AI</Text>
-              <Text style={styles.dashSubtitle}>Nutrition Tracker</Text>
+              <Text style={styles.dashSubtitleText}>Nutrition Tracker</Text>
             </View>
           </View>
           <View style={styles.streakBadge}>
-            <Flame color="#FFA500" fill="#FFA500" size={18} />
+            <Flame color="#FF6B35" fill="#FF6B35" size={18} />
             <Text style={styles.streakText}>
               {calAiDashboard?.streak || 0}
             </Text>
@@ -709,7 +685,7 @@ export default function CalorieScreen() {
           </View>
         </View>
 
-        {/* Date strip — horizontal ScrollView now FREE of pager conflict */}
+        {/* Date strip */}
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -737,7 +713,7 @@ export default function CalorieScreen() {
         </ScrollView>
       </View>
 
-      {/* ── Horizontal Pager (content only, no header) ── */}
+      {/* ── Horizontal Pager ── */}
       <ScrollView
         ref={horizontalPagerRef}
         horizontal
@@ -755,277 +731,224 @@ export default function CalorieScreen() {
           style={[styles.scrollContainer, { width }]}
           contentContainerStyle={styles.dashboardContent}
         >
-          {/* Main Calorie Card */}
-          <View style={styles.mainRingContainer}>
-            <Text style={styles.budgetSectionLabel}>TODAY'S BUDGET</Text>
-            {calAiDashboard && calAiDashboard.caloriesLeft <= 0 ? (
-              <View style={styles.celebrationContainer}>
-                <LinearGradient
-                  colors={["rgba(252, 163, 17, 0.2)", "rgba(255, 69, 0, 0.2)"]}
-                  style={styles.celebrationGradient}
+          {/* TODAY'S BUDGET Section */}
+          <Text style={styles.sectionLabel}>TODAY'S BUDGET</Text>
+          {calAiDashboard && calAiDashboard.caloriesLeft <= 0 ? (
+            <View style={styles.celebrationContainer}>
+              <LinearGradient
+                colors={["rgba(252, 163, 17, 0.2)", "rgba(255, 69, 0, 0.2)"]}
+                style={styles.celebrationGradient}
+              >
+                <TrendingUp color={Colors.secondary} size={48} />
+                <Text style={styles.celebrationTitle}>Goal Reached! 🥳</Text>
+                <Text style={styles.celebrationText}>
+                  You've completed your daily target. Amazing job!
+                </Text>
+                <TouchableOpacity
+                  style={styles.resetBtn}
+                  onPress={handleResetTarget}
                 >
-                  <TrendingUp color={Colors.secondary} size={48} />
-                  <Text style={styles.celebrationTitle}>Goal Reached! 🥳</Text>
-                  <Text style={styles.celebrationText}>
-                    You've completed your daily target. Amazing job!
-                  </Text>
-                  <TouchableOpacity
-                    style={styles.resetBtn}
-                    onPress={handleResetTarget}
-                  >
-                    <Text style={styles.resetBtnText}>Start New Target</Text>
-                  </TouchableOpacity>
-                </LinearGradient>
-              </View>
-            ) : (
-              <Card style={styles.mainProgressCard}>
-                <View style={styles.progressLeft}>
-                  <Text style={styles.caloriesCount}>
+                  <Text style={styles.resetBtnText}>Start New Target</Text>
+                </TouchableOpacity>
+              </LinearGradient>
+            </View>
+          ) : (
+            <View style={styles.budgetCard}>
+              <LinearGradient
+                colors={["#0D1B2A", "#1A2D42"]}
+                style={styles.budgetCardGradient}
+              >
+                {/* Left: calorie count */}
+                <View style={styles.budgetLeft}>
+                  <View style={styles.budgetCalorieRow}>
+                    <Text style={styles.budgetCalorieNumber}>
+                      {calAiDashboard ? Math.max(0, calAiDashboard.caloriesLeft) : "0"}
+                    </Text>
+                    <Text style={styles.budgetCalorieLabel}> Calories Left</Text>
+                  </View>
+                  <Text style={styles.budgetGoalText}>
+                    Goal:{" "}
+                    <Text style={styles.budgetGoalHighlight}>
+                      {calAiDashboard?.dailyTarget || 2500} kcal
+                    </Text>
+                    {" · "}
                     {calAiDashboard
-                      ? Math.max(0, calAiDashboard.caloriesLeft)
-                      : "0"}
-                  </Text>
-                  <Text style={styles.caloriesLabel}>
-                    Calories{" "}
-                    <Text style={{ fontFamily: Fonts.bold, color: "rgba(255,255,255,0.9)" }}>left</Text>
-                  </Text>
-                  <Text style={{ fontSize: 12, color: "rgba(255,255,255,0.5)", fontFamily: Fonts.regular, marginTop: 8 }}>
-                    Goal: {calAiDashboard?.dailyTarget || 2000} kcal · {calAiDashboard ? Math.round(((calAiDashboard.dailyTarget - calAiDashboard.caloriesLeft) / calAiDashboard.dailyTarget) * 100) : 0}% used
+                      ? Math.round(((calAiDashboard.dailyTarget - calAiDashboard.caloriesLeft) / calAiDashboard.dailyTarget) * 100)
+                      : 0}
+                    % used
                   </Text>
                 </View>
 
-                <View style={styles.progressRight}>
+                {/* Right: ring */}
+                <View style={styles.budgetRight}>
                   <ProgressRing
                     progress={
                       calAiDashboard
-                        ? Math.min(
-                            1,
-                            Math.max(
-                              0,
-                              1 -
-                                calAiDashboard.caloriesLeft /
-                                  (calAiDashboard.dailyTarget || 2000),
-                            ),
-                          )
+                        ? Math.min(1, Math.max(0,
+                          1 - calAiDashboard.caloriesLeft / (calAiDashboard.dailyTarget || 2500),
+                        ))
                         : 0
                     }
-                    size={100}
-                    strokeWidth={8}
-                    color="#60A5FA"
+                    size={80}
+                    strokeWidth={7}
+                    color="#FF6B35"
                     trackColor="rgba(255,255,255,0.15)"
                   >
-                    <View style={styles.flameIconContainer}>
-                      <Flame
-                        color="#FFA500"
-                        fill="#FFA500"
-                        size={22}
-                      />
-                    </View>
+                    <Flame color="#FF6B35" fill="#FF6B35" size={22} />
                   </ProgressRing>
                 </View>
-              </Card>
-            )}
-          </View>
+              </LinearGradient>
+            </View>
+          )}
 
-          {/* Macro Grid */}
+          {/* TODAY PROGRESS section */}
+          <Text style={[styles.sectionLabel, { marginTop: 20 }]}>TODAY PROGRESS</Text>
           <View style={styles.macroRow}>
-            <Card style={styles.macroCard}>
-              <View style={styles.macroCardHeader}>
-                <Text style={styles.macroValue}>
-                  {Math.max(
-                    0,
-                    (calAiDashboard?.proteinTarget || 150) -
-                      (calAiDashboard?.totalProtein || 0),
-                  )}
-                  g
-                </Text>
-                <Text style={styles.macroLabel}>
-                  Protein <Text style={{ fontFamily: Fonts.bold }}>left</Text>
-                </Text>
-              </View>
+            {/* Protein */}
+            <View style={styles.macroCard}>
               <ProgressRing
                 progress={
                   calAiDashboard
-                    ? Math.min(
-                        1,
-                        (calAiDashboard.totalProtein || 0) /
-                          (calAiDashboard.proteinTarget || 150),
-                      )
+                    ? Math.min(1, (calAiDashboard.totalProtein || 0) / (calAiDashboard.proteinTarget || 150))
                     : 0
                 }
-                size={60}
-                strokeWidth={6}
-                color="rgb(222, 102, 102)"
+                size={72}
+                strokeWidth={5}
+                color="#E05A5A"
+                trackColor="#F5E8E8"
               >
-                <Flame color="rgb(222, 102, 102)" size={20} />
+                {/* Icon placeholder — replace with actual emoji/image */}
+                <Image style={{ width: 22, height: 22 }} resizeMode="contain" source={require("../../assets/images/icons_home_screen/protien.svg")} />
               </ProgressRing>
-            </Card>
-
-            <Card style={styles.macroCard}>
-              <View style={styles.macroCardHeader}>
-                <Text style={styles.macroValue}>
-                  {Math.max(
-                    0,
-                    (calAiDashboard?.carbsTarget || 250) -
-                      (calAiDashboard?.totalCarbs || 0),
-                  )}
-                  g
-                </Text>
-                <Text style={styles.macroLabel}>
-                  Carbs <Text style={{ fontFamily: Fonts.bold }}>left</Text>
-                </Text>
-              </View>
-              <ProgressRing
-                progress={
-                  calAiDashboard
-                    ? Math.min(
-                        1,
-                        (calAiDashboard.totalCarbs || 0) /
-                          (calAiDashboard.carbsTarget || 250),
-                      )
-                    : 0
-                }
-                size={60}
-                strokeWidth={6}
-                color="rgb(227, 154, 98)"
-              >
-                <Zap color="rgb(227, 154, 98)" size={20} />
-              </ProgressRing>
-            </Card>
-
-            <Card style={styles.macroCard}>
-              <View style={styles.macroCardHeader}>
-                <Text style={styles.macroValue}>
-                  {Math.max(
-                    0,
-                    (calAiDashboard?.fatsTarget || 70) -
-                      (calAiDashboard?.totalFats || 0),
-                  )}
-                  g
-                </Text>
-                <Text style={styles.macroLabel}>
-                  Fats <Text style={{ fontFamily: Fonts.bold }}>left</Text>
-                </Text>
-              </View>
-              <ProgressRing
-                progress={
-                  calAiDashboard
-                    ? Math.min(
-                        1,
-                        (calAiDashboard.totalFats || 0) /
-                          (calAiDashboard.fatsTarget || 70),
-                      )
-                    : 0
-                }
-                size={60}
-                strokeWidth={6}
-                color="rgb(102, 152, 222)"
-              >
-                <Utensils color="rgb(102, 152, 222)" size={20} />
-              </ProgressRing>
-            </Card>
-          </View>
-          {/* 
-          <TouchableOpacity
-            style={styles.addMealHero}
-            onPress={() => setCurrentView("add-meal")}
-          >
-            <LinearGradient
-              colors={[Colors.primary, "#24243e"]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.gradientBtn}
-            >
-              <Plus color="#FFF" size={24} />
-              <Text style={styles.addMealText}>Add a Meal</Text>
-            </LinearGradient>
-          </TouchableOpacity> */}
-
-          <View
-            style={{
-              flexDirection: "row",
-              justifyContent: "space-between",
-              alignItems: "center",
-              marginBottom: 16,
-            }}
-          >
-            <Text style={[styles.sectionTitle, { marginBottom: 0 }]}>
-              Recent Meals
-            </Text>
-            <View
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                backgroundColor: "rgba(99, 102, 241, 0.1)",
-                paddingHorizontal: 12,
-                paddingVertical: 6,
-                borderRadius: 20,
-              }}
-            >
-              <Animated.View
-                style={{ transform: [{ translateX: bounceAnim }] }}
-              >
-                <ChevronLeft color={Colors.primary} size={16} />
-              </Animated.View>
-              <Text
-                style={{
-                  fontSize: 13,
-                  color: Colors.primary,
-                  fontFamily: Fonts.semiBold,
-                  marginLeft: 4,
-                }}
-              >
-                Swipe for Progress
+              <Text style={styles.macroCardValue}>
+                {Math.max(0, (calAiDashboard?.proteinTarget || 150) - (calAiDashboard?.totalProtein || 0))}g
               </Text>
+              <Text style={styles.macroCardName}>Protein</Text>
+              <View style={[styles.macroPercentBadge, { backgroundColor: "#FDE8E8" }]}>
+                <Text style={[styles.macroPercentText, { color: "#E05A5A" }]}>
+                  {calAiDashboard
+                    ? Math.round((1 - (calAiDashboard.totalProtein || 0) / (calAiDashboard.proteinTarget || 150)) * 100)
+                    : 96}% left
+                </Text>
+              </View>
+            </View>
+
+            {/* Carbs */}
+            <View style={styles.macroCard}>
+              <ProgressRing
+                progress={
+                  calAiDashboard
+                    ? Math.min(1, (calAiDashboard.totalCarbs || 0) / (calAiDashboard.carbsTarget || 250))
+                    : 0
+                }
+                size={72}
+                strokeWidth={5}
+                color="#3B82F6"
+                trackColor="#E8F0FE"
+              >
+                <Image style={{ width: 22, height: 22 }} resizeMode="contain" source={require("../../assets/images/icons_home_screen/carbs.svg")} />
+
+              </ProgressRing>
+              <Text style={styles.macroCardValue}>
+                {Math.max(0, (calAiDashboard?.carbsTarget || 250) - (calAiDashboard?.totalCarbs || 0))}g
+              </Text>
+              <Text style={styles.macroCardName}>Carbs</Text>
+              <View style={[styles.macroPercentBadge, { backgroundColor: "#EBF2FF" }]}>
+                <Text style={[styles.macroPercentText, { color: "#3B82F6" }]}>
+                  {calAiDashboard
+                    ? Math.round((1 - (calAiDashboard.totalCarbs || 0) / (calAiDashboard.carbsTarget || 250)) * 100)
+                    : 96}% left
+                </Text>
+              </View>
+            </View>
+
+            {/* Fats */}
+            <View style={styles.macroCard}>
+              <ProgressRing
+                progress={
+                  calAiDashboard
+                    ? Math.min(1, (calAiDashboard.totalFats || 0) / (calAiDashboard.fatsTarget || 70))
+                    : 0
+                }
+                size={72}
+                strokeWidth={5}
+                color="#F59E0B"
+                trackColor="#FEF3E0"
+              >
+                <Image style={{ width: 22, height: 22 }} resizeMode="contain" source={require("../../assets/images/icons_home_screen/fats.svg")} />
+              </ProgressRing>
+              <Text style={styles.macroCardValue}>
+                {Math.max(0, (calAiDashboard?.fatsTarget || 70) - (calAiDashboard?.totalFats || 0))}g
+              </Text>
+              <Text style={styles.macroCardName}>Fats</Text>
+              <View style={[styles.macroPercentBadge, { backgroundColor: "#FEF5E0" }]}>
+                <Text style={[styles.macroPercentText, { color: "#F59E0B" }]}>
+                  {calAiDashboard
+                    ? Math.round((1 - (calAiDashboard.totalFats || 0) / (calAiDashboard.fatsTarget || 70)) * 100)
+                    : 96}% left
+                </Text>
+              </View>
             </View>
           </View>
+
+          {/* Swipe for Progress pill */}
+          <TouchableOpacity
+            style={styles.swipePill}
+            onPress={() => {
+              horizontalPagerRef.current?.scrollTo({ x: width, animated: true });
+              setDashboardPageIndex(1);
+            }}
+          >
+            <Text style={styles.swipePillText}>Swipe for Progress</Text>
+            <View style={styles.swipeArrows}>
+              <ChevronRight size={14} color="#22C55E" />
+              <ChevronRight size={14} color="#22C55E" />
+              <ChevronRight size={14} color="#22C55E" />
+              <ChevronRight size={14} color="#22C55E" />
+            </View>
+          </TouchableOpacity>
+
+          {/* Recent Meals header */}
+          <View style={styles.recentMealsHeader}>
+            <Text style={styles.recentMealsTitle}>Recent Meals</Text>
+            <TouchableOpacity>
+              <Text style={styles.viewAllText}>View All</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Meal list */}
           {calAiDashboard?.meals && calAiDashboard.meals.length > 0 ? (
-            calAiDashboard.meals.map((meal: any) => (
-              <Card key={meal.id} style={styles.mealCard}>
-                <View style={styles.mealInfo}>
-                  <Text style={styles.mealDesc}>{meal.description}</Text>
-                  <View style={styles.mealMacroPills}>
-                    <View
-                      style={[
-                        styles.macroPill,
-                        { backgroundColor: "rgba(255,77,77,0.08)" },
-                      ]}
-                    >
-                      <Text
-                        style={[styles.macroPillText, { color: "#FF4D4D" }]}
-                      >
-                        P: {meal.protein}g
-                      </Text>
+            calAiDashboard.meals.map((meal: any, idx: number) => {
+              const borderColors = ["#22C55E", "#F59E0B", "#EF4444", "#3B82F6"];
+              const borderColor = borderColors[idx % borderColors.length];
+              return (
+                <View key={meal.id} style={styles.mealCard}>
+                  {/* Short rounded accent bar on left */}
+                  <View style={[styles.mealAccentBar, { backgroundColor: borderColor }]} />
+                  <View style={styles.mealInfo}>
+                    <Text style={styles.mealDesc}>{meal.description}</Text>
+                    <View style={styles.mealMacroRow}>
+                      <View style={[styles.mealMacroPill, { backgroundColor: "#FDE8E8" }]}>
+                        <Text style={[styles.mealMacroPillText, { color: "#E05A5A" }]}>• P: {meal.protein}g</Text>
+                      </View>
+                      <View style={[styles.mealMacroPill, { backgroundColor: "#EBF2FF" }]}>
+                        <Text style={[styles.mealMacroPillText, { color: "#3B82F6" }]}>• C: {meal.carbs}g</Text>
+                      </View>
+                      <View style={[styles.mealMacroPill, { backgroundColor: "#FEF5E0" }]}>
+                        <Text style={[styles.mealMacroPillText, { color: "#F59E0B" }]}>• F: {meal.fats}g</Text>
+                      </View>
                     </View>
-                    <View
-                      style={[
-                        styles.macroPill,
-                        { backgroundColor: "rgba(255,184,77,0.08)" },
-                      ]}
-                    >
-                      <Text
-                        style={[styles.macroPillText, { color: "#FFB84D" }]}
-                      >
-                        C: {meal.carbs}g
-                      </Text>
-                    </View>
-                    <View
-                      style={[
-                        styles.macroPill,
-                        { backgroundColor: "rgba(77,148,255,0.08)" },
-                      ]}
-                    >
-                      <Text
-                        style={[styles.macroPillText, { color: "#4D94FF" }]}
-                      >
-                        F: {meal.fats}g
-                      </Text>
-                    </View>
+                    <Text style={styles.mealTimeText}>
+                      Today{meal.time ? ` · ${meal.time}` : ""} · {meal.mealType || "Meal"}
+                    </Text>
+                  </View>
+                  <View style={styles.mealCalContainer}>
+                    <Flame color="#FF6B35" fill="#FF6B35" size={15} />
+                    <Text style={styles.mealCals}>{meal.calories} kcal</Text>
                   </View>
                 </View>
-                <Text style={styles.mealCals}>{meal.calories} kcal</Text>
-              </Card>
-            ))
+              );
+            })
           ) : (
             <EmptyState
               imageSource={require("@/assets/images/salad_bowl_3d.png")}
@@ -1086,7 +1009,6 @@ export default function CalorieScreen() {
           />
         )}
 
-        {/* Scanner Overlay Elements */}
         {!selectedImage && (
           <View style={StyleSheet.absoluteFill} pointerEvents="none">
             <LinearGradient
@@ -1095,13 +1017,11 @@ export default function CalorieScreen() {
             />
             <View style={styles.scannerFrameContainer}>
               <View style={styles.scannerFrame}>
-                {/* Corner Borders */}
                 <View style={[styles.corner, styles.topLeft]} />
                 <View style={[styles.corner, styles.topRight]} />
                 <View style={[styles.corner, styles.bottomLeft]} />
                 <View style={[styles.corner, styles.bottomRight]} />
 
-                {/* Scanning Line */}
                 <Animated.View
                   style={[
                     styles.scannerScanLine,
@@ -1110,7 +1030,7 @@ export default function CalorieScreen() {
                         {
                           translateY: scanLineAnim.interpolate({
                             inputRange: [0, 1],
-                            outputRange: [0, width * 0.8], // Frame height is width * 0.8
+                            outputRange: [0, width * 0.8],
                           }),
                         },
                       ],
@@ -1127,7 +1047,6 @@ export default function CalorieScreen() {
         style={[StyleSheet.absoluteFill, { backgroundColor: "transparent" }]}
         pointerEvents="box-none"
       >
-        {/* Scanner Header */}
         <View style={styles.scannerHeader}>
           <TouchableOpacity
             onPress={() => setCurrentView("dashboard")}
@@ -1143,7 +1062,6 @@ export default function CalorieScreen() {
 
         <View style={{ flex: 1 }} pointerEvents="none" />
 
-        {/* Bottom UI */}
         <View style={styles.scannerFooter}>
           <View style={styles.scannerModes}>
             <TouchableOpacity
@@ -1187,7 +1105,6 @@ export default function CalorieScreen() {
         </View>
       </SafeAreaView>
 
-      {/* Analysis UI when image is selected */}
       {selectedImage && (
         <View style={styles.analysisOverlay}>
           <LinearGradient
@@ -1372,7 +1289,7 @@ export default function CalorieScreen() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <LinearGradient
-        colors={["#E3F2FD", "#F3E5F5", "#FCE4EC"]}
+        colors={["#EEECE8", "#F0EDE8", "#EDE9E4"]}
         style={StyleSheet.absoluteFill}
       />
       <Animated.View style={[StyleSheet.absoluteFill, { opacity: screenFade }]}>
@@ -1437,13 +1354,13 @@ const styles = StyleSheet.create({
   },
   mainContainer: {
     flex: 1,
-    backgroundColor: "#F4F2ED",
+    backgroundColor: "#EEECE8",
   },
   fixedHeader: {
     paddingHorizontal: 20,
     paddingTop: 12,
     paddingBottom: 4,
-    backgroundColor: "#F4F2ED",
+    backgroundColor: "#EEECE8",
   },
   horizontalPager: {
     flex: 1,
@@ -1479,11 +1396,6 @@ const styles = StyleSheet.create({
     backgroundColor: "transparent",
     borderRadius: 24,
     borderWidth: 1,
-    // borderColor: "rgba(255,255,255,0.5)",
-    // shadowColor: "#000",
-    // shadowOffset: { width: 0, height: 4 },
-    // shadowOpacity: 0.05,
-    // shadowRadius: 10,
     elevation: 0,
   },
   inputLabel: {
@@ -1585,17 +1497,19 @@ const styles = StyleSheet.create({
     textAlign: "center",
     lineHeight: 24,
   },
+
+  // ── Dashboard Styles ──
   dashboardContent: {
     padding: 20,
     paddingBottom: 140,
-    backgroundColor: "#F4F2ED",
+    backgroundColor: "#EEECE8",
   },
   dashHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginTop: 16,
-    marginBottom: 12,
+    marginTop: 8,
+    marginBottom: 16,
   },
   titleRow: {
     flexDirection: "row",
@@ -1611,13 +1525,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   dashTitle: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: "800",
-    color: "#1C1C1E",
+    color: "#3B82F6",
     fontFamily: Fonts.bold,
-    lineHeight: 28,
+    lineHeight: 26,
   },
-  dashSubtitle: {
+  dashSubtitleText: {
     fontSize: 12,
     color: "#9CA3AF",
     fontFamily: Fonts.regular,
@@ -1627,41 +1541,42 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "#FFF",
-    paddingHorizontal: 16,
+    paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 20,
     gap: 6,
-    elevation: 4,
-    shadowColor: "rgba(0,0,0,0.1)",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 1,
-    shadowRadius: 12,
+    elevation: 3,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
   },
   streakText: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: "bold",
-    color: "#000",
+    color: "#1C1C1E",
     fontFamily: Fonts.bold,
   },
-  /* ── Calendar ── */
+
+  // Calendar
   calendarHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 14,
+    marginBottom: 12,
   },
   monthLabel: {
-    fontSize: 14,
+    fontSize: 13,
     fontFamily: Fonts.semiBold,
     fontWeight: "600",
     color: "#6B7280",
-    letterSpacing: 0.6,
+    letterSpacing: 0.8,
   },
-  arrowRow: { flexDirection: "row", gap: 8 },
+  arrowRow: { flexDirection: "row", gap: 6 },
   arrowBtn: {
-    width: 26,
-    height: 26,
-    borderRadius: 6,
+    width: 28,
+    height: 28,
+    borderRadius: 7,
     backgroundColor: "#FFFFFF",
     justifyContent: "center",
     alignItems: "center",
@@ -1679,26 +1594,23 @@ const styles = StyleSheet.create({
   },
   dayCell: {
     width: 52,
-    height: 70,
+    height: 68,
     borderRadius: 16,
     backgroundColor: "#FFFFFF",
     justifyContent: "center",
     alignItems: "center",
-    gap: 3,
+    gap: 2,
     elevation: 2,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 6,
-    borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.04)",
   },
   daySelected: {
     backgroundColor: "#1C1C1E",
-    elevation: 8,
-    shadowOpacity: 0.2,
-    shadowRadius: 12,
-    borderColor: "transparent",
+    elevation: 6,
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
   },
   calDayName: {
     fontSize: 11,
@@ -1706,203 +1618,263 @@ const styles = StyleSheet.create({
     color: "#9CA3AF",
     fontWeight: "500",
   },
-  calDayNameSel: { color: "rgba(255,255,255,0.7)" },
+  calDayNameSel: { color: "rgba(255,255,255,0.6)" },
   calDayNum: {
-    fontSize: 20,
+    fontSize: 19,
     fontFamily: Fonts.bold,
     fontWeight: "700",
     color: "#1C1C1E",
   },
   calDayNumSel: { color: "#FFFFFF" },
 
-  dashSubtitle: {
-    fontSize: 14,
-    color: Colors.textMuted,
-    fontFamily: Fonts.regular,
-  },
-  profileBadge: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: "rgba(255,255,255,0.5)",
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.05)",
-  },
-  mainRingContainer: {
-    alignItems: "center",
-    justifyContent: "center",
-    marginVertical: 4,
-    marginBottom: 16,
-  },
-  budgetSectionLabel: {
+  // Section label
+  sectionLabel: {
     fontSize: 11,
     fontWeight: "700",
     color: "#9CA3AF",
     letterSpacing: 1.2,
     textTransform: "uppercase",
-    alignSelf: "flex-start",
-    marginBottom: 10,
     fontFamily: Fonts.bold,
+    marginBottom: 10,
   },
+
+  // Budget card
+  budgetCard: {
+    borderRadius: 20,
+    overflow: "hidden",
+    elevation: 6,
+    shadowColor: "#0D1B2A",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.25,
+    shadowRadius: 16,
+    marginBottom: 4,
+  },
+  budgetCardGradient: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 22,
+    paddingVertical: 24,
+  },
+  budgetLeft: {
+    flex: 1,
+  },
+  budgetCalorieRow: {
+    flexDirection: "row",
+    alignItems: "baseline",
+    flexWrap: "wrap",
+  },
+  budgetCalorieNumber: {
+    fontSize: 46,
+    fontFamily: Fonts.bold,
+    color: "#FFFFFF",
+    fontWeight: "900",
+    lineHeight: 52,
+  },
+  budgetCalorieLabel: {
+    fontSize: 16,
+    color: "rgba(255,255,255,0.7)",
+    fontFamily: Fonts.regular,
+    marginLeft: 4,
+  },
+  budgetGoalText: {
+    fontSize: 12,
+    color: "rgba(255,255,255,0.5)",
+    fontFamily: Fonts.regular,
+    marginTop: 6,
+  },
+  budgetGoalHighlight: {
+    color: "#22C55E",
+    fontFamily: Fonts.semiBold,
+  },
+  budgetRight: {
+    alignItems: "center",
+    justifyContent: "center",
+    marginLeft: 16,
+  },
+
+  // Macro cards
   macroRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginTop: 16,
     gap: 10,
+    marginBottom: 4,
   },
   macroCard: {
     flex: 1,
     alignItems: "center",
     padding: 14,
-    borderRadius: 18,
-    backgroundColor: "#FFFFFF",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.06,
-    shadowRadius: 12,
-    elevation: 3,
-    height: 130,
-    justifyContent: "space-between",
-  },
-  macroCardHeader: {
-    alignItems: "center",
-    width: "100%",
-  },
-  macroValue: {
-    fontSize: 14,
-    fontWeight: "bold",
-    color: Colors.text,
-    fontFamily: Fonts.bold,
-    marginTop: 8,
-  },
-  macroLabel: {
-    fontSize: 10,
-    color: Colors.textMuted,
-    fontFamily: Fonts.regular,
-  },
-  addMealHero: {
-    marginTop: 30,
+    paddingBottom: 16,
     borderRadius: 20,
-    overflow: "hidden",
-    elevation: 5,
-    shadowColor: Colors.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-  },
-  gradientBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 20,
-  },
-  addMealText: {
-    color: "#FFF",
-    fontSize: 18,
-    fontWeight: "bold",
-    fontFamily: Fonts.bold,
-    marginLeft: 10,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: Colors.text,
-    fontFamily: Fonts.bold,
-    marginTop: 32,
-    marginBottom: 16,
-  },
-  mealCard: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    padding: 16,
-    marginBottom: 10,
     backgroundColor: "#FFFFFF",
-    borderRadius: 18,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.06,
     shadowRadius: 10,
-    elevation: 2,
+    elevation: 3,
+    gap: 6,
   },
-  mealInfo: {
-    flex: 1,
-  },
-  mealDesc: {
-    fontSize: 16,
+  macroCardValue: {
+    fontSize: 15,
     fontWeight: "bold",
-    color: Colors.text,
+    color: "#1C1C1E",
     fontFamily: Fonts.bold,
-  },
-  mealMacros: {
-    fontSize: 12,
-    color: Colors.textMuted,
-    fontFamily: Fonts.regular,
     marginTop: 4,
   },
-  mealMacroPills: {
-    flexDirection: "row",
-    gap: 8,
-    marginTop: 8,
-  },
-  macroPill: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-  },
-  macroPillText: {
+  macroCardSubLabel: {
     fontSize: 10,
-    fontWeight: "bold",
-    fontFamily: Fonts.bold,
-  },
-  mealCals: {
-    fontSize: 16,
-    fontWeight: "bold",
-    color: Colors.secondary,
-    fontFamily: Fonts.bold,
-  },
-  emptyText: {
-    textAlign: "center",
-    color: Colors.textMuted,
+    color: "#9CA3AF",
     fontFamily: Fonts.regular,
-    marginTop: 20,
   },
-  modalHeader: {
+  macroCardName: {
+    fontSize: 12,
+    color: "#6B7280",
+    fontFamily: Fonts.medium,
+  },
+  macroPercentBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    marginTop: 2,
+  },
+  macroPercentText: {
+    fontSize: 11,
+    fontFamily: Fonts.semiBold,
+    fontWeight: "600",
+  },
+
+  // Swipe pill
+  swipePill: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: 20,
-    paddingVertical: 15,
-    marginTop: 23,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 14,
+    paddingHorizontal: 18,
+    paddingVertical: 14,
+    marginTop: 16,
+    marginBottom: 4,
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
   },
-  modalTitle: {
+  swipePillText: {
+    fontSize: 14,
+    color: "#1C1C1E",
+    fontFamily: Fonts.medium,
+  },
+  swipeArrows: {
+    flexDirection: "row",
+    gap: -4,
+  },
+
+  // Recent meals
+  recentMealsHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: 22,
+    marginBottom: 12,
+  },
+  recentMealsTitle: {
     fontSize: 18,
     fontWeight: "bold",
-    color: Colors.text,
+    color: "#1C1C1E",
     fontFamily: Fonts.bold,
   },
-  addMealContent: {
-    padding: 20,
-    flex: 1,
+  viewAllText: {
+    fontSize: 14,
+    color: "#3B82F6",
+    fontFamily: Fonts.medium,
   },
-  textArea: {
-    backgroundColor: "rgba(255,255,255,0.7)",
+  mealCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+    marginBottom: 8,
+    backgroundColor: "#FFFFFF",
     borderRadius: 16,
-    padding: 20,
-    fontSize: 16,
-    fontFamily: Fonts.regular,
-    color: Colors.text,
-    height: 150,
-    textAlignVertical: "top",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.5)",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
   },
+  mealAccentBar: {
+    width: 4,
+    height: 36,
+    borderRadius: 4,
+    marginRight: 12,
+  },
+  mealInfo: {
+    flex: 1,
+    gap: 4,
+  },
+  mealDesc: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#1C1C1E",
+    fontFamily: Fonts.bold,
+  },
+  mealMacroRow: {
+    flexDirection: "row",
+    gap: 10,
+    alignItems: "center",
+  },
+  mealMacroPill: {
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  mealMacroPillText: {
+    fontSize: 11,
+    fontFamily: Fonts.semiBold,
+    fontWeight: "600",
+  },
+  mealTimeText: {
+    fontSize: 11,
+    color: "#9CA3AF",
+    fontFamily: Fonts.regular,
+  },
+  mealCalContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+    marginLeft: 12,
+  },
+  mealCals: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#1C1C1E",
+    fontFamily: Fonts.bold,
+  },
+
+  fab: {
+    position: "absolute",
+    bottom: 100,
+    right: 20,
+    backgroundColor: Colors.primary,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    justifyContent: "center",
+    alignItems: "center",
+    elevation: 10,
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+  },
+
+  // Celebration
   celebrationContainer: {
     width: "100%",
     alignItems: "center",
     justifyContent: "center",
+    marginBottom: 8,
   },
   celebrationGradient: {
     width: "100%",
@@ -1939,140 +1911,24 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: Fonts.semiBold,
   },
-  aiNote: {
+
+  // Modal header
+  modalHeader: {
     flexDirection: "row",
-    marginTop: 20,
-    paddingRight: 20,
-  },
-  aiNoteText: {
-    fontSize: 12,
-    color: Colors.textMuted,
-    fontFamily: Fonts.regular,
-    marginLeft: 8,
-    lineHeight: 18,
-  },
-  imageButtonsRow: {
-    flexDirection: "row",
-    gap: 12,
-    marginBottom: 20,
-  },
-  imageActionBtn: {
-    flex: 1,
-    backgroundColor: "rgba(255,255,255,0.7)",
-    borderRadius: 16,
-    padding: 20,
+    justifyContent: "space-between",
     alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.5)",
+    paddingHorizontal: 20,
+    paddingVertical: 15,
+    marginTop: 23,
   },
-  imageActionText: {
-    color: Colors.text,
-    fontSize: 12,
-    fontFamily: Fonts.medium,
-    marginTop: 8,
-  },
-  imagePreviewContainer: {
-    width: "100%",
-    height: 200,
-    borderRadius: 20,
-    overflow: "hidden",
-    marginBottom: 20,
-    position: "relative",
-  },
-  imagePreview: {
-    width: "100%",
-    height: "100%",
-  },
-  removeImageBtn: {
-    position: "absolute",
-    top: 10,
-    right: 10,
-    backgroundColor: "rgba(0,0,0,0.5)",
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  removeImageText: {
-    color: "#FFF",
-    fontSize: 20,
+  modalTitle: {
+    fontSize: 18,
     fontWeight: "bold",
+    color: Colors.text,
+    fontFamily: Fonts.bold,
   },
 
-  fab: {
-    position: "absolute",
-    bottom: 100,
-    right: 20,
-    backgroundColor: Colors.primary,
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    justifyContent: "center",
-    alignItems: "center",
-    elevation: 10,
-    shadowColor: Colors.primary,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.4,
-    shadowRadius: 12,
-  },
-  analyzeButtonGradient: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 20,
-    gap: 12,
-  },
-  analyzeButtonText: {
-    color: "#FFF",
-    fontSize: 18,
-    fontFamily: Fonts.bold,
-  },
-  mainProgressCard: {
-    overflow: "hidden",
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 24,
-    paddingVertical: 28,
-    backgroundColor: "#0D1B2A",
-    borderRadius: 24,
-    width: "100%",
-    elevation: 8,
-    shadowColor: "#0D1B2A",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 20,
-  },
-  progressLeft: {
-    flex: 1,
-  },
-  caloriesCount: {
-    fontSize: 52,
-    fontFamily: Fonts.bold,
-    color: "#FFFFFF",
-    lineHeight: 58,
-    fontWeight: "900",
-  },
-  caloriesLabel: {
-    fontSize: 16,
-    color: "rgba(255,255,255,0.7)",
-    fontFamily: Fonts.regular,
-    marginTop: 4,
-  },
-  progressRight: {
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  flameIconContainer: {
-    width: 50,
-    height: 50,
-    borderRadius: 18,
-    backgroundColor: "rgba(0,0,0,0.03)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
+  // Scanner
   scannerBody: {
     flex: 1,
     backgroundColor: "#000",
@@ -2089,16 +1945,6 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.medium,
     textAlign: "center",
     marginBottom: 20,
-  },
-  permissionBtn: {
-    backgroundColor: Colors.primary,
-    paddingHorizontal: 30,
-    paddingVertical: 12,
-    borderRadius: 20,
-  },
-  permissionBtnText: {
-    color: "#000",
-    fontFamily: Fonts.bold,
   },
   scannerContainer: {
     flex: 1,
@@ -2201,7 +2047,7 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
   },
   activeModeItem: {
-    backgroundColor: "#DAF062", // Lime green from image
+    backgroundColor: "#DAF062",
   },
   modeIconCircle: {
     width: 28,
@@ -2245,7 +2091,7 @@ const styles = StyleSheet.create({
   captureBtnCore: {
     flex: 1,
     borderRadius: 28,
-    backgroundColor: "#FF5E4D", // Reddish color from image
+    backgroundColor: "#FF5E4D",
   },
   historyBtn: {
     padding: 10,
@@ -2280,6 +2126,18 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 10,
+  },
+  analyzeButtonGradient: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 20,
+    gap: 12,
+  },
+  analyzeButtonText: {
+    color: "#FFF",
+    fontSize: 18,
+    fontFamily: Fonts.bold,
   },
   retakeButton: {
     width: "100%",
